@@ -197,8 +197,8 @@ func (c *Client) readLoop() error {
 				fmt.Printf("!!! Lag: %v\n", delta)
 			}
 		} else if e.Command == "NICK" {
-			if e.Identity.Nick == c.currentNick {
-				c.currentNick = lastArg
+			if e.Identity.Nick == c.currentNick && len(e.Args) > 0 {
+				c.currentNick = e.Args[0]
 			}
 		} else if e.Command == "001" {
 			c.currentNick = e.Args[0]
