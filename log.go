@@ -4,7 +4,7 @@ import (
 	"log"
 )
 
-// Simple logger interface designed for use with logrous
+// Simple logger interface designed for use with logrus
 // and other similar systems
 type Logger interface {
 	Info(args ...interface{})
