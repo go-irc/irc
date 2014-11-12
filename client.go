@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net"
 	"strconv"
 	"strings"
@@ -17,7 +16,7 @@ import (
 )
 
 type Client struct {
-	Logger *log.Logger
+	Logger Logger
 
 	handler     Handler
 	connected   bool
@@ -170,7 +169,7 @@ func (c *Client) readLoop() error {
 		}
 
 		if c.Logger != nil {
-			c.Logger.Printf("<-- %s", line)
+			c.Logger.Print("<--", line)
 		}
 
 		// Parse the event from our line
@@ -194,7 +193,7 @@ func (c *Client) readLoop() error {
 			delta := time.Duration(time.Now().UnixNano() - ns)
 
 			if c.Logger != nil {
-				fmt.Printf("!!! Lag: %v\n", delta)
+				c.Logger.Info("!!! Lag:", delta)
 			}
 		} else if e.Command == "NICK" {
 			if e.Identity.Nick == c.currentNick && len(e.Args) > 0 {
@@ -234,7 +233,7 @@ func (c *Client) writeLoop() error {
 			select {
 			case <-throttle:
 				if c.Logger != nil {
-					fmt.Printf("--> %s", line)
+					c.Logger.Print("-->", line)
 				}
 				c.conn.Write([]byte(line))
 			case <-c.t.Dying():
