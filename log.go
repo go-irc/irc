@@ -14,6 +14,25 @@ type Logger interface {
 	Print(args ...interface{})
 }
 
+// AKA Black hole logger or /dev/null logger.
+type NilLogger struct{}
+
+func (l *NilLogger) Info(args ...interface{}) {
+}
+
+func (l *NilLogger) Warn(args ...interface{}) {
+}
+
+func (l *NilLogger) Error(args ...interface{}) {
+}
+
+func (l *NilLogger) Fatal(args ...interface{}) {
+}
+
+func (l *NilLogger) Print(args ...interface{}) {
+}
+
+// This logger simply tries to proxy to the official golang log package
 type SimpleLogger struct{}
 
 func (l *SimpleLogger) Info(args ...interface{}) {
