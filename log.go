@@ -14,28 +14,28 @@ type Logger interface {
 	Print(args ...interface{})
 }
 
-type DefaultLogger struct{}
+type SimpleLogger struct{}
 
-func (l *DefaultLogger) Info(args ...interface{}) {
+func (l *SimpleLogger) Info(args ...interface{}) {
 	data := append([]interface{}{"INFO"}, args...)
 	log.Print(data...)
 }
 
-func (l *DefaultLogger) Warn(args ...interface{}) {
+func (l *SimpleLogger) Warn(args ...interface{}) {
 	data := append([]interface{}{"WARN"}, args...)
 	log.Print(data...)
 }
 
-func (l *DefaultLogger) Error(args ...interface{}) {
+func (l *SimpleLogger) Error(args ...interface{}) {
 	data := append([]interface{}{"ERROR"}, args...)
 	log.Print(data...)
 }
 
-func (l *DefaultLogger) Fatal(args ...interface{}) {
+func (l *SimpleLogger) Fatal(args ...interface{}) {
 	data := append([]interface{}{"FATAL"}, args...)
 	log.Fatal(data...)
 }
 
-func (l *DefaultLogger) Print(args ...interface{}) {
+func (l *SimpleLogger) Print(args ...interface{}) {
 	log.Print(args...)
 }
