@@ -96,7 +96,7 @@ func (c *Client) DialTLS(host string, conf *tls.Config) error {
 func (c *Client) Write(line string) {
 	// Try to write it to the writer. Fall back to waiting until the bot dies.
 	select {
-	case c.write <- line + "\r\n":
+	case c.write <- line:
 	case <-c.t.Dying():
 	}
 }
@@ -169,7 +169,7 @@ func (c *Client) readLoop() error {
 		}
 
 		if c.Logger != nil {
-			c.Logger.Print("<--", line)
+			c.Logger.Debug("<--", strings.TrimRight(line, "\r\n"))
 		}
 
 		// Parse the event from our line
@@ -233,9 +233,10 @@ func (c *Client) writeLoop() error {
 			select {
 			case <-throttle:
 				if c.Logger != nil {
-					c.Logger.Print("-->", line)
+					c.Logger.Debug("-->", line)
 				}
 				c.conn.Write([]byte(line))
+				c.conn.Write([]byte("\r\n"))
 			case <-c.t.Dying():
 			}
 		case <-c.t.Dying():
