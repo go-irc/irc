@@ -1,5 +1,7 @@
 # irc
 
+[![Build Status](https://travis-ci.org/belak/irc.svg?branch=master)](https://travis-ci.org/belak/irc)
+
 irc is a simple golang irc library based around the idea of simple handlers.
 
 ## Usage
