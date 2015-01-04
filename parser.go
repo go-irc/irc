@@ -57,6 +57,14 @@ func ParseIdentity(line string) *Identity {
 	return id
 }
 
+func (i *Identity) Copy() *Identity {
+	newIdent := &Identity{}
+
+	*newIdent = *i
+
+	return newIdent
+}
+
 // https://github.com/kylelemons/blightbot/blob/master/bot/parser.go#L55
 func ParseEvent(line string) *Event {
 	// Trim the line and make sure we have data
@@ -129,6 +137,9 @@ func (e *Event) Copy() *Event {
 
 	// Copy stuff from the old event
 	*newEvent = *e
+
+	// Copy the Identity
+	newEvent.Identity = e.Identity.Copy()
 
 	// Copy the Args slice
 	newEvent.Args = append(make([]string, 0, len(e.Args)), e.Args...)

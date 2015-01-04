@@ -225,6 +225,13 @@ func TestEventCopy(t *testing.T) {
 			t.Errorf("%d. copy = %q, want %q", i, e, c)
 		}
 
+		if c.Identity != nil {
+			c.Identity.Nick += "junk"
+			if reflect.DeepEqual(e, c) {
+				t.Errorf("%d. copyidentity matched when it shouldn't", i)
+			}
+		}
+
 		c.Args = append(c.Args, "junk")
 		if reflect.DeepEqual(e, c) {
 			t.Errorf("%d. copyargs matched when it shouldn't", i)
