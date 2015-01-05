@@ -86,20 +86,30 @@ func ParseEvent(line string) *Event {
 		line = split[1]
 	}
 
-	// Split the string on the : separator
-	split := strings.SplitN(line, ":", 2)
+	// While the current arg doesn't start with ":"
+	for len(line) > 0 && line[0] != ':' {
+		split := strings.SplitN(line, " ", 2)
+		if len(split) < 2 {
+			c.Args = append(c.Args, split...)
+			break
+		}
 
-	// Grab the args
-	args := strings.Split(strings.TrimSpace(split[0]), " ")
+		c.Args = append(c.Args, split[0])
 
-	// Grab the commena
-	c.Command = strings.ToUpper(args[0])
-
-	// Store the args
-	c.Args = args[1:]
-	if len(split) > 1 {
-		c.Args = append(c.Args, string(split[1]))
+		line = split[1]
 	}
+
+	if len(line) > 0 && line[0] == ':' {
+		c.Args = append(c.Args, line[1:])
+	}
+
+	// The first arg will be the command
+	if len(c.Args) < 1 {
+		return nil
+	}
+
+	c.Command = c.Args[0]
+	c.Args = c.Args[1:]
 
 	c.Identity = ParseIdentity(c.Prefix)
 

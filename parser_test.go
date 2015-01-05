@@ -37,6 +37,14 @@ var eventTests = []struct {
 	},
 	{
 		Prefix: "server.kevlar.net",
+		Cmd:    "PING",
+
+		Host: "server.kevlar.net",
+
+		Expect: ":server.kevlar.net :PING\n",
+	},
+	{
+		Prefix: "server.kevlar.net",
 		Cmd:    "NOTICE",
 		Args:   []string{"user", "*** This is a test"},
 
@@ -55,6 +63,15 @@ var eventTests = []struct {
 
 		Expect:   ":belakA!belakB@a.host.com PRIVMSG #somewhere :*** This is a test\n",
 		FromChan: true,
+	},
+	{
+		Prefix: "freenode",
+		Cmd:    "005",
+		Args:   []string{"starkbot", "CHANLIMIT=#:120", "MORE", "are supported by this server"},
+
+		Host: "freenode",
+
+		Expect: ":freenode 005 starkbot CHANLIMIT=#:120 MORE :are supported by this server",
 	},
 	{
 		Prefix: "belakA!belakB@a.host.com",
@@ -138,7 +155,7 @@ func TestParseEvent(t *testing.T) {
 		} else {
 			for j := 0; j < len(test.Args) && j < len(e.Args); j++ {
 				if test.Args[j] != e.Args[j] {
-					t.Errorf("%d. arg[%d] = %q, want %q", i, e.Args[j], test.Args[j])
+					t.Errorf("%d. arg[%d] = %q, want %q", i, j, e.Args[j], test.Args[j])
 				}
 			}
 		}
