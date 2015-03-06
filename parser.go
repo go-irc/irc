@@ -69,7 +69,7 @@ func (i *Identity) Copy() *Identity {
 func ParseEvent(line string) *Event {
 	// Trim the line and make sure we have data
 	line = strings.TrimSpace(line)
-	if len(line) <= 0 {
+	if len(line) == 0 {
 		return nil
 	}
 
@@ -79,33 +79,21 @@ func ParseEvent(line string) *Event {
 
 	if line[0] == ':' {
 		split := strings.SplitN(line, " ", 2)
-		if len(split) <= 1 {
+		if len(split) < 2 {
 			return nil
 		}
 		c.Prefix = string(split[0][1:])
 		line = split[1]
 	}
 
-	// While the current arg doesn't start with ":"
-	for len(line) > 0 && line[0] != ':' {
-		split := strings.SplitN(line, " ", 2)
-		if len(split) < 2 {
-			c.Args = append(c.Args, split...)
-			break
-		}
-
-		c.Args = append(c.Args, split[0])
-
-		line = split[1]
-	}
-
-	if len(line) > 0 && line[0] == ':' {
+	if line[0] == ':' {
 		c.Args = append(c.Args, line[1:])
-	}
-
-	// The first arg will be the command
-	if len(c.Args) < 1 {
-		return nil
+	} else {
+		split := strings.SplitN(line, " :", 2)
+		c.Args = strings.Split(split[0], " ")
+		if len(split) == 2 {
+			c.Args = append(c.Args, split[1])
+		}
 	}
 
 	c.Command = c.Args[0]
