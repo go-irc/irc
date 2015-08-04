@@ -13,7 +13,7 @@ type BasicMux struct {
 	mu *sync.Mutex
 }
 
-// This will create an initialized BasicMux with no handlers.
+// NewBasicMux will create an initialized BasicMux with no handlers.
 func NewBasicMux() *BasicMux {
 	return &BasicMux{
 		make(map[string][]HandlerFunc),
@@ -21,7 +21,7 @@ func NewBasicMux() *BasicMux {
 	}
 }
 
-// BasicMux.Event will register a Handler
+// Event will register a Handler
 func (m *BasicMux) Event(c string, h HandlerFunc) {
 	m.mu.Lock()
 	defer m.mu.Unlock()

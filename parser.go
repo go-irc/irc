@@ -2,7 +2,7 @@ package irc
 
 import "strings"
 
-// An identity represents the prefix of a message, generally the user who sent it
+// Identity represents the prefix of a message, generally the user who sent it
 type Identity struct {
 	// This is what the Identity was parsed from
 	Raw string
@@ -17,6 +17,7 @@ type Identity struct {
 	Host string
 }
 
+// Event represents a line parsed from the server
 type Event struct {
 	// This is where the Command was parsed from.
 	Raw string
@@ -34,6 +35,11 @@ type Event struct {
 	Args []string
 }
 
+// ParseIdentity takes an identity string and parses it into an
+// identity struct. It will always return an Identity struct and never
+// nil.
+//
+// Originally adapted from
 // https://github.com/kylelemons/blightbot/blob/master/bot/parser.go#L34
 func ParseIdentity(line string) *Identity {
 	// Start by creating an Identity with nothing but the host
@@ -65,6 +71,11 @@ func (i *Identity) Copy() *Identity {
 	return newIdent
 }
 
+// ParseEvent takes an event string (usually a whole line) and parses
+// it into an Event struct. This will return nil in the case of
+// invalid events.
+//
+// Originally adapted from
 // https://github.com/kylelemons/blightbot/blob/master/bot/parser.go#L55
 func ParseEvent(line string) *Event {
 	// Trim the line and make sure we have data

@@ -1,8 +1,7 @@
 package irc
 
-// Objects implementing the Handler interface can be
-// registered to serve a particular Event.Command or
-// subcommand in the IRC client.
+// Handler objects can be registered to serve a particular
+// Event.Command or subcommand in the IRC client.
 //
 // HandleEvent should read the data, formulate a response
 // action (if needed) and then return. Returning signals
