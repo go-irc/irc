@@ -63,6 +63,7 @@ func ParseIdentity(line string) *Identity {
 	return id
 }
 
+// Copy will create a new copy of an Identity
 func (i *Identity) Copy() *Identity {
 	newIdent := &Identity{}
 
@@ -115,7 +116,7 @@ func ParseEvent(line string) *Event {
 	return c
 }
 
-// This returns the last argument in the Event or an empty string
+// Trailing returns the last argument in the Event or an empty string
 // if there are no args
 func (e *Event) Trailing() string {
 	if len(e.Args) < 1 {
@@ -125,7 +126,7 @@ func (e *Event) Trailing() string {
 	return e.Args[len(e.Args)-1]
 }
 
-// This is mostly for PRIVMSG events (and similar derived events)
+// FromChannel is mostly for PRIVMSG events (and similar derived events)
 // It will check if the event came from a channel or a person.
 func (e *Event) FromChannel() bool {
 	if len(e.Args) < 1 || len(e.Args[0]) < 1 {
@@ -140,6 +141,7 @@ func (e *Event) FromChannel() bool {
 	}
 }
 
+// Copy will create a new copy of an event
 func (e *Event) Copy() *Event {
 	// Create a new event
 	newEvent := &Event{}
