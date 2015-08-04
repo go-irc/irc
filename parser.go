@@ -89,6 +89,7 @@ func ParseEvent(line string) *Event {
 		Raw: line,
 	}
 
+	// Split out the prefix if there is one
 	if line[0] == ':' {
 		split := strings.SplitN(line, " ", 2)
 		if len(split) < 2 {
@@ -98,19 +99,32 @@ func ParseEvent(line string) *Event {
 		line = split[1]
 	}
 
-	if line[0] == ':' {
-		c.Args = append(c.Args, line[1:])
-	} else {
-		split := strings.SplitN(line, " :", 2)
-		c.Args = strings.Split(split[0], " ")
-		if len(split) == 2 {
-			c.Args = append(c.Args, split[1])
-		}
+	// Split out the trailing then the rest of the args. Because
+	// we expect there to be at least one result as an arg (the
+	// command) we don't need to special case the trailing arg and
+	// can just attempt a split on " :"
+	split := strings.SplitN(line, " :", 2)
+	c.Args = strings.FieldsFunc(split[0], func(r rune) bool {
+		return r == ' '
+	})
+
+	// If there are no args, we need to bail because we need at
+	// least the command.
+	if len(c.Args) == 0 {
+		return nil
 	}
 
+	// If we had a trailing arg, append it to the other args
+	if len(split) == 2 {
+		c.Args = append(c.Args, split[1])
+	}
+
+	// Because of how it's parsed, the Command will show up as the
+	// first arg.
 	c.Command = c.Args[0]
 	c.Args = c.Args[1:]
 
+	// Parse the identity, if there was one
 	c.Identity = ParseIdentity(c.Prefix)
 
 	return c
