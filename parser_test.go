@@ -37,14 +37,6 @@ var eventTests = []struct {
 	},
 	{
 		Prefix: "server.kevlar.net",
-		Cmd:    "PING",
-
-		Host: "server.kevlar.net",
-
-		Expect: ":server.kevlar.net :PING\n",
-	},
-	{
-		Prefix: "server.kevlar.net",
 		Cmd:    "NOTICE",
 		Args:   []string{"user", "*** This is a test"},
 
