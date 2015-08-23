@@ -136,9 +136,6 @@ func TestParseEvent(t *testing.T) {
 			continue
 		}
 
-		if test.Prefix != e.Prefix {
-			t.Errorf("%d. prefix = %q, want %q", i, e.Prefix, test.Prefix)
-		}
 		if test.Cmd != e.Command {
 			t.Errorf("%d. command = %q, want %q", i, e.Command, test.Cmd)
 		}

@@ -9,44 +9,53 @@ import (
 	"net"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
-
-	tomb "gopkg.in/tomb.v2"
 )
 
 type Client struct {
+	// Logger for messages. By defaut this will be a NilLogger
 	Logger Logger
 
-	handler     Handler
-	connected   bool
+	// Internal things
 	currentNick string
-	nick        string
-	user        string
-	name        string
-	password    string
-	lock        *sync.Mutex
 	conn        io.ReadWriteCloser
-	t           *tomb.Tomb
-	write       chan string
+	in          *bufio.Reader
 }
 
-func NewClient(handler Handler, nick string, user string, name string, pass string) *Client {
+func Dial(addr string, nick, user, name, pass string) (*Client, error) {
+	conn, err := net.Dial("tcp", addr)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewClient(conn, nick, user, name, pass), nil
+}
+
+func DialTLS(addr string, c *tls.Config, nick, user, name, pass string) (*Client, error) {
+	conn, err := tls.Dial("tcp", addr, c)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewClient(conn, nick, user, name, pass), nil
+}
+
+func NewClient(rwc io.ReadWriteCloser, nick, user, name, pass string) *Client {
 	// Create the client
 	c := &Client{
-		nil,
-		handler,
-		false,
+		&NilLogger{},
 		nick,
-		nick,
-		user,
-		name,
-		pass,
-		&sync.Mutex{},
-		nil,
-		&tomb.Tomb{},
-		make(chan string),
+		rwc,
+		bufio.NewReader(rwc),
 	}
+
+	// Send the info we need to
+	if len(pass) > 0 {
+		c.Writef("PASS %s", pass)
+	}
+
+	c.Writef("NICK %s", nick)
+	c.Writef("USER %s 0.0.0.0 0.0.0.0 :%s", user, name)
 
 	return c
 }
@@ -55,211 +64,63 @@ func (c *Client) CurrentNick() string {
 	return c.currentNick
 }
 
-func (c *Client) Dial(host string) error {
-	c.lock.Lock()
-	defer c.lock.Unlock()
-
-	if c.connected {
-		return errors.New("Already connected")
-	}
-
-	var err error
-	c.conn, err = net.Dial("tcp", host)
-	if err != nil {
-		return err
-	}
-
-	c.connected = true
-
-	return c.start()
-}
-
-func (c *Client) DialTLS(host string, conf *tls.Config) error {
-	c.lock.Lock()
-	defer c.lock.Unlock()
-
-	if c.connected {
-		return errors.New("Already connected")
-	}
-
-	var err error
-	c.conn, err = tls.Dial("tcp", host, conf)
-	if err != nil {
-		return err
-	}
-
-	c.connected = true
-
-	return c.start()
-}
-
 func (c *Client) Write(line string) {
-	// Try to write it to the writer. Fall back to waiting until the bot dies.
-	select {
-	case c.write <- line:
-	case <-c.t.Dying():
+	if c.Logger != nil {
+		c.Logger.Debug("-->", line)
 	}
+	c.conn.Write([]byte(line))
+	c.conn.Write([]byte("\r\n"))
 }
 
 func (c *Client) Writef(format string, args ...interface{}) {
 	c.Write(fmt.Sprintf(format, args...))
 }
 
-func (c *Client) start() error {
-	// Start up the tomb with all our loops.
-	//
-	// Note that it's only safe to call tomb.Go from inside
-	// other functions that have been started the same way,
-	// so we make a quick closure to take care of that.
-	c.t.Go(func() error {
-		// Ping Loop
-		c.t.Go(c.pingLoop)
-
-		// Read Loop
-		c.t.Go(c.readLoop)
-
-		// Write Loop
-		c.t.Go(c.writeLoop)
-
-		// Cleanup Loop
-		c.t.Go(c.cleanupLoop)
-
-		// Actually connect
-		if len(c.password) > 0 {
-			c.Writef("PASS %s", c.password)
-		}
-
-		c.Writef("NICK %s", c.nick)
-		c.Writef("USER %s 0.0.0.0 0.0.0.0 :%s", c.user, c.name)
-
-		return nil
-	})
-
-	// This will wait until all goroutines in the Tomb die
-	return c.t.Wait()
-}
-
-func (c *Client) pingLoop() error {
-	// Tick every 2 minutes
-	t := time.NewTicker(2 * time.Minute)
-	defer t.Stop()
-	for {
-		select {
-		case <-t.C:
-			c.Writef("PING :%d", time.Now().UnixNano())
-		case <-c.t.Dying():
-			return nil
-		}
+func (c *Client) ReadEvent() (*Event, error) {
+	line, err := c.in.ReadString('\n')
+	if err != nil {
+		return nil, err
 	}
-}
 
-func (c *Client) readLoop() error {
-	in := bufio.NewReader(c.conn)
-	for {
-		// If we're dying exit out
-		select {
-		case <-c.t.Dying():
-			return nil
-		default:
-		}
+	if c.Logger != nil {
+		c.Logger.Debug("<--", strings.TrimRight(line, "\r\n"))
+	}
 
-		line, err := in.ReadString('\n')
-		if err != nil {
-			return err
+	// Parse the event from our line
+	e := ParseEvent(line)
+
+	// Now that we have the event parsed, do some preprocessing on it
+	lastArg := e.Trailing()
+
+	// Clean up CTCP stuff so everyone
+	// doesn't have to parse it manually
+	if e.Command == "PRIVMSG" && len(lastArg) > 0 && lastArg[0] == '\x01' {
+		e.Command = "CTCP"
+
+		if i := strings.LastIndex(lastArg, "\x01"); i > -1 {
+			e.Args[len(e.Args)-1] = lastArg[1:i]
 		}
+	} else if e.Command == "PING" {
+		c.Writef("PONG :%s", lastArg)
+	} else if e.Command == "PONG" {
+		ns, _ := strconv.ParseInt(lastArg, 10, 64)
+		delta := time.Duration(time.Now().UnixNano() - ns)
 
 		if c.Logger != nil {
-			c.Logger.Debug("<--", strings.TrimRight(line, "\r\n"))
+			c.Logger.Info("!!! Lag:", delta)
 		}
-
-		// Parse the event from our line
-		e := ParseEvent(line)
-
-		// Now that we have the event parsed, do some preprocessing on it
-		lastArg := e.Trailing()
-
-		// Clean up CTCP stuff so everyone
-		// doesn't have to parse it manually
-		if e.Command == "PRIVMSG" && len(lastArg) > 0 && lastArg[0] == '\x01' {
-			e.Command = "CTCP"
-
-			if i := strings.LastIndex(lastArg, "\x01"); i > -1 {
-				e.Args[len(e.Args)-1] = lastArg[1:i]
-			}
-		} else if e.Command == "PING" {
-			c.Writef("PONG :%s", lastArg)
-		} else if e.Command == "PONG" {
-			ns, _ := strconv.ParseInt(lastArg, 10, 64)
-			delta := time.Duration(time.Now().UnixNano() - ns)
-
-			if c.Logger != nil {
-				c.Logger.Info("!!! Lag:", delta)
-			}
-		} else if e.Command == "NICK" {
-			if e.Identity.Nick == c.currentNick && len(e.Args) > 0 {
-				c.currentNick = e.Args[0]
-			}
-		} else if e.Command == "001" {
+	} else if e.Command == "NICK" {
+		if e.Identity.Nick == c.currentNick && len(e.Args) > 0 {
 			c.currentNick = e.Args[0]
-		} else if e.Command == "437" || e.Command == "433" {
-			c.currentNick = c.currentNick + "_"
-			c.Writef("NICK %s", c.currentNick)
 		}
-
-		c.handler.HandleEvent(c, e)
+	} else if e.Command == "001" {
+		c.currentNick = e.Args[0]
+	} else if e.Command == "437" || e.Command == "433" {
+		c.currentNick = c.currentNick + "_"
+		c.Writef("NICK %s", c.currentNick)
 	}
-}
 
-func (c *Client) writeLoop() error {
-	// Set up a rate limiter
-	// Based on https://code.google.com/p/go-wiki/wiki/RateLimiting
-	// 2 lps with a burst of 5
-	throttle := make(chan time.Time, 5)
-	ticker := time.NewTicker(500 * time.Millisecond)
-	defer ticker.Stop()
-
-	go func() {
-		for ns := range ticker.C {
-			select {
-			case throttle <- ns:
-			default:
-			}
-		}
-	}()
-
-	for {
-		select {
-		case line := <-c.write:
-			select {
-			case <-throttle:
-				if c.Logger != nil {
-					c.Logger.Debug("-->", line)
-				}
-				c.conn.Write([]byte(line))
-				c.conn.Write([]byte("\r\n"))
-			case <-c.t.Dying():
-			}
-		case <-c.t.Dying():
-			return nil
-		}
-	}
-}
-
-func (c *Client) cleanupLoop() error {
-	select {
-	case <-c.t.Dying():
-		c.conn.Close()
-	}
-	return nil
-}
-
-func prepend(e interface{}, v []interface{}) []interface{} {
-	var vc []interface{}
-
-	vc = append(vc, e)
-	vc = append(vc, v...)
-
-	return vc
+	return e, nil
 }
 
 func (c *Client) MentionReply(e *Event, format string, v ...interface{}) error {
@@ -270,7 +131,6 @@ func (c *Client) MentionReply(e *Event, format string, v ...interface{}) error {
 
 	if e.FromChannel() {
 		format = "%s: " + format
-
 		v = prepend(e.Identity.Nick, v)
 	}
 
@@ -278,6 +138,7 @@ func (c *Client) MentionReply(e *Event, format string, v ...interface{}) error {
 }
 
 func (c *Client) CTCPReply(e *Event, format string, v ...interface{}) error {
+	// Sanity check
 	if len(e.Args) < 1 || len(e.Args[0]) < 1 {
 		return errors.New("Invalid IRC event")
 	}
