@@ -4,9 +4,6 @@ import "strings"
 
 // Identity represents the prefix of a message, generally the user who sent it
 type Identity struct {
-	// This is what the Identity was parsed from
-	Raw string
-
 	// The nick will either contain the nick of who sent the message or a blank string
 	Nick string
 
@@ -19,14 +16,8 @@ type Identity struct {
 
 // Event represents a line parsed from the server
 type Event struct {
-	// This is where the Command was parsed from.
-	Raw string
-
-	// The Identity is also the prefix of the message.
-	Identity *Identity
-
-	// The prefix is essentially a copy of the Raw identity.
-	Prefix string
+	// Each event can have an identity
+	*Identity
 
 	// Command is which command is being called.
 	Command string
@@ -38,13 +29,9 @@ type Event struct {
 // ParseIdentity takes an identity string and parses it into an
 // identity struct. It will always return an Identity struct and never
 // nil.
-//
-// Originally adapted from
-// https://github.com/kylelemons/blightbot/blob/master/bot/parser.go#L34
 func ParseIdentity(line string) *Identity {
 	// Start by creating an Identity with nothing but the host
 	id := &Identity{
-		Raw:  line,
 		Host: line,
 	}
 
@@ -75,9 +62,6 @@ func (i *Identity) Copy() *Identity {
 // ParseEvent takes an event string (usually a whole line) and parses
 // it into an Event struct. This will return nil in the case of
 // invalid events.
-//
-// Originally adapted from
-// https://github.com/kylelemons/blightbot/blob/master/bot/parser.go#L55
 func ParseEvent(line string) *Event {
 	// Trim the line and make sure we have data
 	line = strings.TrimSpace(line)
@@ -85,17 +69,16 @@ func ParseEvent(line string) *Event {
 		return nil
 	}
 
-	c := &Event{
-		Raw: line,
-	}
+	c := &Event{Identity: &Identity{}}
 
-	// Split out the prefix if there is one
 	if line[0] == ':' {
 		split := strings.SplitN(line, " ", 2)
 		if len(split) < 2 {
 			return nil
 		}
-		c.Prefix = string(split[0][1:])
+
+		// Parse the identity, if there was one
+		c.Identity = ParseIdentity(string(split[0][1:]))
 		line = split[1]
 	}
 
@@ -123,9 +106,6 @@ func ParseEvent(line string) *Event {
 	// first arg.
 	c.Command = c.Args[0]
 	c.Args = c.Args[1:]
-
-	// Parse the identity, if there was one
-	c.Identity = ParseIdentity(c.Prefix)
 
 	return c
 }
