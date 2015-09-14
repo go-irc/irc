@@ -11,7 +11,7 @@ var eventTests = []struct {
 	Args        []string
 
 	// Identity parsing
-	Nick, User, Host string
+	Name, User, Host string
 
 	// Total output
 	Expect string
@@ -31,7 +31,7 @@ var eventTests = []struct {
 		Prefix: "server.kevlar.net",
 		Cmd:    "PING",
 
-		Host: "server.kevlar.net",
+		Name: "server.kevlar.net",
 
 		Expect: ":server.kevlar.net PING\n",
 	},
@@ -40,7 +40,7 @@ var eventTests = []struct {
 		Cmd:    "NOTICE",
 		Args:   []string{"user", "*** This is a test"},
 
-		Host: "server.kevlar.net",
+		Name: "server.kevlar.net",
 
 		Expect: ":server.kevlar.net NOTICE user :*** This is a test\n",
 	},
@@ -49,7 +49,7 @@ var eventTests = []struct {
 		Cmd:    "PRIVMSG",
 		Args:   []string{"#somewhere", "*** This is a test"},
 
-		Nick: "belakA",
+		Name: "belakA",
 		User: "belakB",
 		Host: "a.host.com",
 
@@ -61,7 +61,7 @@ var eventTests = []struct {
 		Cmd:    "005",
 		Args:   []string{"starkbot", "CHANLIMIT=#:120", "MORE", "are supported by this server"},
 
-		Host: "freenode",
+		Name: "freenode",
 
 		Expect: ":freenode 005 starkbot CHANLIMIT=#:120 MORE :are supported by this server\n",
 	},
@@ -70,7 +70,7 @@ var eventTests = []struct {
 		Cmd:    "PRIVMSG",
 		Args:   []string{"&somewhere", "*** This is a test"},
 
-		Nick: "belakA",
+		Name: "belakA",
 		User: "belakB",
 		Host: "a.host.com",
 
@@ -82,7 +82,7 @@ var eventTests = []struct {
 		Cmd:    "PRIVMSG",
 		Args:   []string{"belak", "*** This is a test"},
 
-		Nick: "belakA",
+		Name: "belakA",
 		User: "belakB",
 		Host: "a.host.com",
 
@@ -93,7 +93,7 @@ var eventTests = []struct {
 		Cmd:    "B",
 		Args:   []string{"C"},
 
-		Host: "A",
+		Name: "A",
 
 		Expect: ":A B C\n",
 	},
@@ -102,7 +102,7 @@ var eventTests = []struct {
 		Cmd:    "C",
 		Args:   []string{"D"},
 
-		User: "A",
+		Name: "A",
 		Host: "B",
 
 		Expect: ":A@B C D\n",
@@ -117,7 +117,7 @@ var eventTests = []struct {
 		Cmd:    "B",
 		Args:   []string{"C", "D"},
 
-		Host: "A",
+		Name: "A",
 
 		Expect: ":A B C D\n",
 	},
@@ -169,8 +169,8 @@ func TestParseIdentity(t *testing.T) {
 			t.Errorf("%d. Got nil for valid identity", i)
 			continue
 		}
-		if test.Nick != pi.Nick {
-			t.Errorf("%d. nick = %q, want %q", i, pi.Nick, test.Nick)
+		if test.Name != pi.Name {
+			t.Errorf("%d. name = %q, want %q", i, pi.Name, test.Name)
 		}
 		if test.User != pi.User {
 			t.Errorf("%d. user = %q, want %q", i, pi.User, test.User)
@@ -232,7 +232,7 @@ func TestEventCopy(t *testing.T) {
 		}
 
 		if c.Identity != nil {
-			c.Identity.Nick += "junk"
+			c.Identity.Name += "junk"
 			if reflect.DeepEqual(e, c) {
 				t.Errorf("%d. copyidentity matched when it shouldn't", i)
 			}
