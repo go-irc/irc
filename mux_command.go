@@ -132,8 +132,7 @@ func (m *CommandMux) HandleEvent(c *Client, e *Event) {
 	}
 
 	// Copy it into a new Event
-	newEvent := &Event{}
-	*newEvent = *e
+	newEvent := e.Copy()
 
 	// Chop off the command itself
 	msgParts := strings.SplitN(lastArg, " ", 2)
