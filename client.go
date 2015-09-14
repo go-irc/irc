@@ -89,6 +89,11 @@ func (c *Client) Writef(format string, args ...interface{}) {
 	c.Write(fmt.Sprintf(format, args...))
 }
 
+// WriteEvent writes the given event to the stream
+func (c *Client) WriteEvent(e *Event) {
+	c.Write(e.String())
+}
+
 // ReadEvent returns the next event from the stream or an error.
 func (c *Client) ReadEvent() (*Event, error) {
 	line, err := c.in.ReadString('\n')

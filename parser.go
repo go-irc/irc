@@ -1,6 +1,10 @@
 package irc
 
-import "strings"
+import (
+	"bytes"
+	"fmt"
+	"strings"
+)
 
 // Identity represents the prefix of a message, generally the user who sent it
 type Identity struct {
@@ -57,6 +61,17 @@ func (i *Identity) Copy() *Identity {
 	*newIdent = *i
 
 	return newIdent
+}
+
+// String ensures this is stringable
+func (i *Identity) String() string {
+	if i.Nick != "" {
+		return fmt.Sprintf("%s!%s@%s", i.Nick, i.User, i.Host)
+	} else if i.User != "" {
+		return fmt.Sprintf("%s@%s", i.User, i.Host)
+	}
+
+	return i.Host
 }
 
 // ParseEvent takes an event string (usually a whole line) and parses
@@ -150,4 +165,40 @@ func (e *Event) Copy() *Event {
 	newEvent.Args = append(make([]string, 0, len(e.Args)), e.Args...)
 
 	return newEvent
+}
+
+// String ensures this is stringable
+func (e *Event) String() string {
+	buf := &bytes.Buffer{}
+
+	// Add the prefix if we have one
+	if e.Identity.Host != "" {
+		buf.WriteByte(':')
+		buf.WriteString(e.Identity.String())
+		buf.WriteByte(' ')
+	}
+
+	// Add the command since we know we'll always have one
+	buf.WriteString(e.Command)
+
+	if len(e.Args) > 0 {
+		args := e.Args[:len(e.Args)-1]
+		trailing := e.Args[len(e.Args)-1]
+
+		if len(args) > 0 {
+			buf.WriteByte(' ')
+			buf.WriteString(strings.Join(args, " "))
+		}
+
+		// If trailing contains a space or starts with a : we
+		// need to actually specify that it's trailing.
+		if strings.ContainsRune(trailing, ' ') || trailing[0] == ':' {
+			buf.WriteString(" :")
+		} else {
+			buf.WriteString(" ")
+		}
+		buf.WriteString(trailing)
+	}
+
+	return buf.String()
 }

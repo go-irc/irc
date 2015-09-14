@@ -63,7 +63,7 @@ var eventTests = []struct {
 
 		Host: "freenode",
 
-		Expect: ":freenode 005 starkbot CHANLIMIT=#:120 MORE :are supported by this server",
+		Expect: ":freenode 005 starkbot CHANLIMIT=#:120 MORE :are supported by this server\n",
 	},
 	{
 		Prefix: "belakA!belakB@a.host.com",
@@ -241,6 +241,19 @@ func TestEventCopy(t *testing.T) {
 		c.Args = append(c.Args, "junk")
 		if reflect.DeepEqual(e, c) {
 			t.Errorf("%d. copyargs matched when it shouldn't", i)
+		}
+	}
+}
+
+func TestEventString(t *testing.T) {
+	for i, test := range eventTests {
+		if test.IsNil {
+			continue
+		}
+
+		e := ParseEvent(test.Expect)
+		if e.String()+"\n" != test.Expect {
+			t.Errorf("%d. %s did not match %s", i, e.String(), test.Expect)
 		}
 	}
 }
