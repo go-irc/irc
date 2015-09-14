@@ -166,7 +166,7 @@ func TestParseIdentity(t *testing.T) {
 
 		pi := ParseIdentity(test.Prefix)
 		if pi == nil {
-			t.Errorf("%d. Got nil for valid identity", pi)
+			t.Errorf("%d. Got nil for valid identity", i)
 			continue
 		}
 		if test.Nick != pi.Nick {
@@ -213,7 +213,7 @@ func TestEventFromChan(t *testing.T) {
 
 		e := ParseEvent(test.Expect)
 		if e.FromChannel() != test.FromChan {
-			t.Errorf("%d. fromchannel = %q, want %q", i, e.FromChannel(), test.FromChan)
+			t.Errorf("%d. fromchannel = %v, want %v", i, e.FromChannel(), test.FromChan)
 		}
 	}
 }
