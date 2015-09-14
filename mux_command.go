@@ -64,7 +64,7 @@ func (m *CommandMux) help(c *Client, e *Event) {
 		if help == nil {
 			c.Reply(e, "There is no help available for command %q", cmd)
 		} else {
-			lines := help.Format(m.prefix, cmd)
+			lines := help.format(m.prefix, cmd)
 			for _, line := range lines {
 				c.Reply(e, "%s", line)
 			}
@@ -74,7 +74,7 @@ func (m *CommandMux) help(c *Client, e *Event) {
 	}
 }
 
-func (h *HelpInfo) Format(prefix, command string) []string {
+func (h *HelpInfo) format(prefix, command string) []string {
 	if h.Usage == "" && h.Description == "" {
 		return []string{"There is no help available for command " + command}
 	}
