@@ -2,19 +2,19 @@ package irc
 
 import (
 	"bytes"
-	"fmt"
 	"strings"
 )
 
 // Identity represents the prefix of a message, generally the user who sent it
 type Identity struct {
-	// The nick will either contain the nick of who sent the message or a blank string
-	Nick string
+	// Name will contain the nick of who sent the message, the
+	// server who sent the message, or a blank string
+	Name string
 
-	// The nick will either contain the user who sent the message or a blank string
+	// User will either contain the user who sent the message or a blank string
 	User string
 
-	// The nick will either contain the host of who sent the message or a blank string
+	// Host will either contain the host of who sent the message or a blank string
 	Host string
 }
 
@@ -36,20 +36,18 @@ type Event struct {
 func ParseIdentity(line string) *Identity {
 	// Start by creating an Identity with nothing but the host
 	id := &Identity{
-		Host: line,
+		Name: line,
 	}
 
-	uh := strings.SplitN(id.Host, "@", 2)
-	if len(uh) != 2 {
-		return id
+	uh := strings.SplitN(id.Name, "@", 2)
+	if len(uh) == 2 {
+		id.Name, id.Host = uh[0], uh[1]
 	}
-	id.User, id.Host = uh[0], uh[1]
 
-	nu := strings.SplitN(id.User, "!", 2)
-	if len(nu) != 2 {
-		return id
+	nu := strings.SplitN(id.Name, "!", 2)
+	if len(nu) == 2 {
+		id.Name, id.User = nu[0], nu[1]
 	}
-	id.Nick, id.User = nu[0], nu[1]
 
 	return id
 }
@@ -65,13 +63,20 @@ func (i *Identity) Copy() *Identity {
 
 // String ensures this is stringable
 func (i *Identity) String() string {
-	if i.Nick != "" {
-		return fmt.Sprintf("%s!%s@%s", i.Nick, i.User, i.Host)
-	} else if i.User != "" {
-		return fmt.Sprintf("%s@%s", i.User, i.Host)
+	buf := &bytes.Buffer{}
+	buf.WriteString(i.Name)
+
+	if i.User != "" {
+		buf.WriteString("!")
+		buf.WriteString(i.User)
 	}
 
-	return i.Host
+	if i.Host != "" {
+		buf.WriteString("@")
+		buf.WriteString(i.Host)
+	}
+
+	return buf.String()
 }
 
 // ParseEvent takes an event string (usually a whole line) and parses
@@ -172,7 +177,7 @@ func (e *Event) String() string {
 	buf := &bytes.Buffer{}
 
 	// Add the prefix if we have one
-	if e.Identity.Host != "" {
+	if e.Identity.Name != "" {
 		buf.WriteByte(':')
 		buf.WriteString(e.Identity.String())
 		buf.WriteByte(' ')
