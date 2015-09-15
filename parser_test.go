@@ -8,9 +8,9 @@ import (
 var eventTests = []struct {
 	// Event parsing
 	Prefix, Cmd string
-	Args        []string
+	Params        []string
 
-	// Identity parsing
+	// Prefix parsing
 	Name, User, Host string
 
 	// Total output
@@ -42,7 +42,7 @@ var eventTests = []struct {
 	{
 		Prefix: "server.kevlar.net",
 		Cmd:    "NOTICE",
-		Args:   []string{"user", "*** This is a test"},
+		Params:   []string{"user", "*** This is a test"},
 
 		Name: "server.kevlar.net",
 
@@ -51,7 +51,7 @@ var eventTests = []struct {
 	{
 		Prefix: "belakA!belakB@a.host.com",
 		Cmd:    "PRIVMSG",
-		Args:   []string{"#somewhere", "*** This is a test"},
+		Params:   []string{"#somewhere", "*** This is a test"},
 
 		Name: "belakA",
 		User: "belakB",
@@ -63,7 +63,7 @@ var eventTests = []struct {
 	{
 		Prefix: "freenode",
 		Cmd:    "005",
-		Args:   []string{"starkbot", "CHANLIMIT=#:120", "MORE", "are supported by this server"},
+		Params:   []string{"starkbot", "CHANLIMIT=#:120", "MORE", "are supported by this server"},
 
 		Name: "freenode",
 
@@ -72,7 +72,7 @@ var eventTests = []struct {
 	{
 		Prefix: "belakA!belakB@a.host.com",
 		Cmd:    "PRIVMSG",
-		Args:   []string{"&somewhere", "*** This is a test"},
+		Params:   []string{"&somewhere", "*** This is a test"},
 
 		Name: "belakA",
 		User: "belakB",
@@ -84,7 +84,7 @@ var eventTests = []struct {
 	{
 		Prefix: "belakA!belakB@a.host.com",
 		Cmd:    "PRIVMSG",
-		Args:   []string{"belak", "*** This is a test"},
+		Params:   []string{"belak", "*** This is a test"},
 
 		Name: "belakA",
 		User: "belakB",
@@ -95,7 +95,7 @@ var eventTests = []struct {
 	{
 		Prefix: "A",
 		Cmd:    "B",
-		Args:   []string{"C"},
+		Params:   []string{"C"},
 
 		Name: "A",
 
@@ -104,7 +104,7 @@ var eventTests = []struct {
 	{
 		Prefix: "A@B",
 		Cmd:    "C",
-		Args:   []string{"D"},
+		Params:   []string{"D"},
 
 		Name: "A",
 		Host: "B",
@@ -113,13 +113,13 @@ var eventTests = []struct {
 	},
 	{
 		Cmd:    "B",
-		Args:   []string{"C"},
+		Params:   []string{"C"},
 		Expect: "B C\n",
 	},
 	{
 		Prefix: "A",
 		Cmd:    "B",
-		Args:   []string{"C", "D"},
+		Params:   []string{"C", "D"},
 
 		Name: "A",
 
@@ -143,12 +143,12 @@ func TestParseEvent(t *testing.T) {
 		if test.Cmd != e.Command {
 			t.Errorf("%d. command = %q, want %q", i, e.Command, test.Cmd)
 		}
-		if len(test.Args) != len(e.Args) {
-			t.Errorf("%d. args = %v, want %v", i, e.Args, test.Args)
+		if len(test.Params) != len(e.Params) {
+			t.Errorf("%d. args = %v, want %v", i, e.Params, test.Params)
 		} else {
-			for j := 0; j < len(test.Args) && j < len(e.Args); j++ {
-				if test.Args[j] != e.Args[j] {
-					t.Errorf("%d. arg[%d] = %q, want %q", i, j, e.Args[j], test.Args[j])
+			for j := 0; j < len(test.Params) && j < len(e.Params); j++ {
+				if test.Params[j] != e.Params[j] {
+					t.Errorf("%d. arg[%d] = %q, want %q", i, j, e.Params[j], test.Params[j])
 				}
 			}
 		}
@@ -161,14 +161,14 @@ func BenchmarkParseEvent(b *testing.B) {
 	}
 }
 
-func TestParseIdentity(t *testing.T) {
+func TestParsePrefix(t *testing.T) {
 	for i, test := range eventTests {
 		// TODO: Not sure if we should be skipping empty strings or handling them.
 		if test.Prefix == "" {
 			continue
 		}
 
-		pi := ParseIdentity(test.Prefix)
+		pi := ParsePrefix(test.Prefix)
 		if pi == nil {
 			t.Errorf("%d. Got nil for valid identity", i)
 			continue
@@ -185,9 +185,9 @@ func TestParseIdentity(t *testing.T) {
 	}
 }
 
-func BenchmarkParseIdentity(b *testing.B) {
+func BenchmarkParsePrefix(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		ParseIdentity(eventTests[i%len(eventTests)].Expect)
+		ParsePrefix(eventTests[i%len(eventTests)].Expect)
 	}
 }
 
@@ -199,12 +199,12 @@ func TestEventTrailing(t *testing.T) {
 
 		e := ParseEvent(test.Expect)
 		tr := e.Trailing()
-		if len(test.Args) < 1 {
+		if len(test.Params) < 1 {
 			if tr != "" {
 				t.Errorf("%d. trailing = %q, want %q", i, tr, "")
 			}
-		} else if tr != test.Args[len(test.Args)-1] {
-			t.Errorf("%d. trailing = %q, want %q", i, tr, test.Args[len(test.Args)-1])
+		} else if tr != test.Params[len(test.Params)-1] {
+			t.Errorf("%d. trailing = %q, want %q", i, tr, test.Params[len(test.Params)-1])
 		}
 	}
 }
@@ -235,14 +235,14 @@ func TestEventCopy(t *testing.T) {
 			t.Errorf("%d. copy = %q, want %q", i, e, c)
 		}
 
-		if c.Identity != nil {
-			c.Identity.Name += "junk"
+		if c.Prefix != nil {
+			c.Prefix.Name += "junk"
 			if reflect.DeepEqual(e, c) {
 				t.Errorf("%d. copyidentity matched when it shouldn't", i)
 			}
 		}
 
-		c.Args = append(c.Args, "junk")
+		c.Params = append(c.Params, "junk")
 		if reflect.DeepEqual(e, c) {
 			t.Errorf("%d. copyargs matched when it shouldn't", i)
 		}

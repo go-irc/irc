@@ -117,7 +117,7 @@ func (c *Client) ReadEvent() (*Event, error) {
 		e.Command = "CTCP"
 
 		if i := strings.LastIndex(lastArg, "\x01"); i > -1 {
-			e.Args[len(e.Args)-1] = lastArg[1:i]
+			e.Params[len(e.Params)-1] = lastArg[1:i]
 		}
 	} else if e.Command == "PING" {
 		c.Writef("PONG :%s", lastArg)
@@ -129,11 +129,11 @@ func (c *Client) ReadEvent() (*Event, error) {
 			c.Logger.Info("!!! Lag:", delta)
 		}
 	} else if e.Command == "NICK" {
-		if e.Identity.Name == c.currentNick && len(e.Args) > 0 {
-			c.currentNick = e.Args[0]
+		if e.Prefix.Name == c.currentNick && len(e.Params) > 0 {
+			c.currentNick = e.Params[0]
 		}
 	} else if e.Command == "001" {
-		c.currentNick = e.Args[0]
+		c.currentNick = e.Params[0]
 	} else if e.Command == "437" || e.Command == "433" {
 		c.currentNick = c.currentNick + "_"
 		c.Writef("NICK %s", c.currentNick)
@@ -145,15 +145,15 @@ func (c *Client) ReadEvent() (*Event, error) {
 // Reply to an Event with a convenience wrapper around Writef
 func (c *Client) Reply(e *Event, format string, v ...interface{}) error {
 	// Sanity check
-	if len(e.Args) < 1 || len(e.Args[0]) < 1 {
+	if len(e.Params) < 1 || len(e.Params[0]) < 1 {
 		return errors.New("Invalid IRC event")
 	}
 
 	if e.FromChannel() {
-		v = prepend(e.Args[0], v)
+		v = prepend(e.Params[0], v)
 		c.Writef("PRIVMSG %s :"+format, v...)
 	} else {
-		v = prepend(e.Identity.Name, v)
+		v = prepend(e.Prefix.Name, v)
 		c.Writef("PRIVMSG %s :"+format, v...)
 	}
 
@@ -164,13 +164,13 @@ func (c *Client) Reply(e *Event, format string, v ...interface{}) error {
 // with the user's name if the message came from a channel.
 func (c *Client) MentionReply(e *Event, format string, v ...interface{}) error {
 	// Sanity check
-	if len(e.Args) < 1 || len(e.Args[0]) < 1 {
+	if len(e.Params) < 1 || len(e.Params[0]) < 1 {
 		return errors.New("Invalid IRC event")
 	}
 
 	if e.FromChannel() {
 		format = "%s: " + format
-		v = prepend(e.Identity.Name, v)
+		v = prepend(e.Prefix.Name, v)
 	}
 
 	return c.Reply(e, format, v...)
@@ -179,11 +179,11 @@ func (c *Client) MentionReply(e *Event, format string, v ...interface{}) error {
 // CTCPReply is a convenience function to respond to CTCP requests.
 func (c *Client) CTCPReply(e *Event, format string, v ...interface{}) error {
 	// Sanity check
-	if len(e.Args) < 1 || len(e.Args[0]) < 1 {
+	if len(e.Params) < 1 || len(e.Params[0]) < 1 {
 		return errors.New("Invalid IRC event")
 	}
 
-	v = prepend(e.Identity.Name, v)
+	v = prepend(e.Prefix.Name, v)
 	c.Writef("NOTICE %s :\x01"+format+"\x01", v...)
 	return nil
 }

@@ -136,9 +136,9 @@ func (m *CommandMux) HandleEvent(c *Client, e *Event) {
 
 	// Chop off the command itself
 	msgParts := strings.SplitN(lastArg, " ", 2)
-	newEvent.Args[len(newEvent.Args)-1] = ""
+	newEvent.Params[len(newEvent.Params)-1] = ""
 	if len(msgParts) > 1 {
-		newEvent.Args[len(newEvent.Args)-1] = strings.TrimSpace(msgParts[1])
+		newEvent.Params[len(newEvent.Params)-1] = strings.TrimSpace(msgParts[1])
 	}
 
 	newEvent.Command = msgParts[0][len(m.prefix):]

@@ -56,7 +56,7 @@ func (m *MentionMux) HandleEvent(c *Client, e *Event) {
 	newEvent := e.Copy()
 
 	// Strip the nick, punctuation, and spaces from the message
-	newEvent.Args[len(newEvent.Args)-1] = strings.TrimSpace(lastArg[len(nick)+1:])
+	newEvent.Params[len(newEvent.Params)-1] = strings.TrimSpace(lastArg[len(nick)+1:])
 
 	m.lock.RLock()
 	defer m.lock.RUnlock()

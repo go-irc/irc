@@ -5,8 +5,8 @@ import (
 	"strings"
 )
 
-// Identity represents the prefix of a message, generally the user who sent it
-type Identity struct {
+// Prefix represents the prefix of a message, generally the user who sent it
+type Prefix struct {
 	// Name will contain the nick of who sent the message, the
 	// server who sent the message, or a blank string
 	Name string
@@ -20,22 +20,22 @@ type Identity struct {
 
 // Event represents a line parsed from the server
 type Event struct {
-	// Each event can have an identity
-	*Identity
+	// Each event can have a Prefix
+	*Prefix
 
 	// Command is which command is being called.
 	Command string
 
-	// Arguments are all the arguments for the command.
-	Args []string
+	// Params are all the arguments for the command.
+	Params []string
 }
 
-// ParseIdentity takes an identity string and parses it into an
-// identity struct. It will always return an Identity struct and never
+// ParsePrefix takes an identity string and parses it into an
+// identity struct. It will always return an Prefix struct and never
 // nil.
-func ParseIdentity(line string) *Identity {
-	// Start by creating an Identity with nothing but the host
-	id := &Identity{
+func ParsePrefix(line string) *Prefix {
+	// Start by creating an Prefix with nothing but the host
+	id := &Prefix{
 		Name: line,
 	}
 
@@ -52,28 +52,28 @@ func ParseIdentity(line string) *Identity {
 	return id
 }
 
-// Copy will create a new copy of an Identity
-func (i *Identity) Copy() *Identity {
-	newIdent := &Identity{}
+// Copy will create a new copy of an Prefix
+func (p *Prefix) Copy() *Prefix {
+	newPrefix := &Prefix{}
 
-	*newIdent = *i
+	*newPrefix = *p
 
-	return newIdent
+	return newPrefix
 }
 
 // String ensures this is stringable
-func (i *Identity) String() string {
+func (p *Prefix) String() string {
 	buf := &bytes.Buffer{}
-	buf.WriteString(i.Name)
+	buf.WriteString(p.Name)
 
-	if i.User != "" {
+	if p.User != "" {
 		buf.WriteString("!")
-		buf.WriteString(i.User)
+		buf.WriteString(p.User)
 	}
 
-	if i.Host != "" {
+	if p.Host != "" {
 		buf.WriteString("@")
-		buf.WriteString(i.Host)
+		buf.WriteString(p.Host)
 	}
 
 	return buf.String()
@@ -89,7 +89,7 @@ func ParseEvent(line string) *Event {
 		return nil
 	}
 
-	c := &Event{Identity: &Identity{}}
+	c := &Event{Prefix: &Prefix{}}
 
 	if line[0] == ':' {
 		split := strings.SplitN(line, " ", 2)
@@ -98,7 +98,7 @@ func ParseEvent(line string) *Event {
 		}
 
 		// Parse the identity, if there was one
-		c.Identity = ParseIdentity(string(split[0][1:]))
+		c.Prefix = ParsePrefix(string(split[0][1:]))
 		line = split[1]
 	}
 
@@ -107,25 +107,25 @@ func ParseEvent(line string) *Event {
 	// command) we don't need to special case the trailing arg and
 	// can just attempt a split on " :"
 	split := strings.SplitN(line, " :", 2)
-	c.Args = strings.FieldsFunc(split[0], func(r rune) bool {
+	c.Params = strings.FieldsFunc(split[0], func(r rune) bool {
 		return r == ' '
 	})
 
 	// If there are no args, we need to bail because we need at
 	// least the command.
-	if len(c.Args) == 0 {
+	if len(c.Params) == 0 {
 		return nil
 	}
 
 	// If we had a trailing arg, append it to the other args
 	if len(split) == 2 {
-		c.Args = append(c.Args, split[1])
+		c.Params = append(c.Params, split[1])
 	}
 
 	// Because of how it's parsed, the Command will show up as the
 	// first arg.
-	c.Command = c.Args[0]
-	c.Args = c.Args[1:]
+	c.Command = c.Params[0]
+	c.Params = c.Params[1:]
 
 	return c
 }
@@ -133,21 +133,21 @@ func ParseEvent(line string) *Event {
 // Trailing returns the last argument in the Event or an empty string
 // if there are no args
 func (e *Event) Trailing() string {
-	if len(e.Args) < 1 {
+	if len(e.Params) < 1 {
 		return ""
 	}
 
-	return e.Args[len(e.Args)-1]
+	return e.Params[len(e.Params)-1]
 }
 
 // FromChannel is mostly for PRIVMSG events (and similar derived events)
 // It will check if the event came from a channel or a person.
 func (e *Event) FromChannel() bool {
-	if len(e.Args) < 1 || len(e.Args[0]) < 1 {
+	if len(e.Params) < 1 || len(e.Params[0]) < 1 {
 		return false
 	}
 
-	switch e.Args[0][0] {
+	switch e.Params[0][0] {
 	case '#', '&':
 		return true
 	default:
@@ -163,11 +163,11 @@ func (e *Event) Copy() *Event {
 	// Copy stuff from the old event
 	*newEvent = *e
 
-	// Copy the Identity
-	newEvent.Identity = e.Identity.Copy()
+	// Copy the Prefix
+	newEvent.Prefix = e.Prefix.Copy()
 
-	// Copy the Args slice
-	newEvent.Args = append(make([]string, 0, len(e.Args)), e.Args...)
+	// Copy the Params slice
+	newEvent.Params = append(make([]string, 0, len(e.Params)), e.Params...)
 
 	return newEvent
 }
@@ -177,18 +177,18 @@ func (e *Event) String() string {
 	buf := &bytes.Buffer{}
 
 	// Add the prefix if we have one
-	if e.Identity.Name != "" {
+	if e.Prefix.Name != "" {
 		buf.WriteByte(':')
-		buf.WriteString(e.Identity.String())
+		buf.WriteString(e.Prefix.String())
 		buf.WriteByte(' ')
 	}
 
 	// Add the command since we know we'll always have one
 	buf.WriteString(e.Command)
 
-	if len(e.Args) > 0 {
-		args := e.Args[:len(e.Args)-1]
-		trailing := e.Args[len(e.Args)-1]
+	if len(e.Params) > 0 {
+		args := e.Params[:len(e.Params)-1]
+		trailing := e.Params[len(e.Params)-1]
 
 		if len(args) > 0 {
 			buf.WriteByte(' ')
