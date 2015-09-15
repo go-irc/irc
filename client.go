@@ -89,13 +89,13 @@ func (c *Client) Writef(format string, args ...interface{}) {
 	c.Write(fmt.Sprintf(format, args...))
 }
 
-// WriteEvent writes the given event to the stream
-func (c *Client) WriteEvent(e *Event) {
-	c.Write(e.String())
+// WriteMessage writes the given message to the stream
+func (c *Client) WriteMessage(m *Message) {
+	c.Write(m.String())
 }
 
-// ReadEvent returns the next event from the stream or an error.
-func (c *Client) ReadEvent() (*Event, error) {
+// ReadMessage returns the next message from the stream or an error.
+func (c *Client) ReadMessage() (*Message, error) {
 	line, err := c.in.ReadString('\n')
 	if err != nil {
 		return nil, err
@@ -105,55 +105,55 @@ func (c *Client) ReadEvent() (*Event, error) {
 		c.Logger.Debug("<--", strings.TrimRight(line, "\r\n"))
 	}
 
-	// Parse the event from our line
-	e := ParseEvent(line)
+	// Parse the message from our line
+	m := ParseMessage(line)
 
-	// Now that we have the event parsed, do some preprocessing on it
-	lastArg := e.Trailing()
+	// Now that we have the message parsed, do some preprocessing on it
+	lastArg := m.Trailing()
 
 	// Clean up CTCP stuff so everyone
 	// doesn't have to parse it manually
-	if e.Command == "PRIVMSG" && len(lastArg) > 0 && lastArg[0] == '\x01' {
-		e.Command = "CTCP"
+	if m.Command == "PRIVMSG" && len(lastArg) > 0 && lastArg[0] == '\x01' {
+		m.Command = "CTCP"
 
 		if i := strings.LastIndex(lastArg, "\x01"); i > -1 {
-			e.Params[len(e.Params)-1] = lastArg[1:i]
+			m.Params[len(m.Params)-1] = lastArg[1:i]
 		}
-	} else if e.Command == "PING" {
+	} else if m.Command == "PING" {
 		c.Writef("PONG :%s", lastArg)
-	} else if e.Command == "PONG" {
+	} else if m.Command == "PONG" {
 		ns, _ := strconv.ParseInt(lastArg, 10, 64)
 		delta := time.Duration(time.Now().UnixNano() - ns)
 
 		if c.Logger != nil {
 			c.Logger.Info("!!! Lag:", delta)
 		}
-	} else if e.Command == "NICK" {
-		if e.Prefix.Name == c.currentNick && len(e.Params) > 0 {
-			c.currentNick = e.Params[0]
+	} else if m.Command == "NICK" {
+		if m.Prefix.Name == c.currentNick && len(m.Params) > 0 {
+			c.currentNick = m.Params[0]
 		}
-	} else if e.Command == "001" {
-		c.currentNick = e.Params[0]
-	} else if e.Command == "437" || e.Command == "433" {
+	} else if m.Command == "001" {
+		c.currentNick = m.Params[0]
+	} else if m.Command == "437" || m.Command == "433" {
 		c.currentNick = c.currentNick + "_"
 		c.Writef("NICK %s", c.currentNick)
 	}
 
-	return e, nil
+	return m, nil
 }
 
-// Reply to an Event with a convenience wrapper around Writef
-func (c *Client) Reply(e *Event, format string, v ...interface{}) error {
+// Reply to a Message with a convenience wrapper around Writef
+func (c *Client) Reply(m *Message, format string, v ...interface{}) error {
 	// Sanity check
-	if len(e.Params) < 1 || len(e.Params[0]) < 1 {
-		return errors.New("Invalid IRC event")
+	if len(m.Params) < 1 || len(m.Params[0]) < 1 {
+		return errors.New("Invalid IRC message")
 	}
 
-	if e.FromChannel() {
-		v = prepend(e.Params[0], v)
+	if m.FromChannel() {
+		v = prepend(m.Params[0], v)
 		c.Writef("PRIVMSG %s :"+format, v...)
 	} else {
-		v = prepend(e.Prefix.Name, v)
+		v = prepend(m.Prefix.Name, v)
 		c.Writef("PRIVMSG %s :"+format, v...)
 	}
 
@@ -162,28 +162,28 @@ func (c *Client) Reply(e *Event, format string, v ...interface{}) error {
 
 // MentionReply acts the same as Reply but it will prefix the message
 // with the user's name if the message came from a channel.
-func (c *Client) MentionReply(e *Event, format string, v ...interface{}) error {
+func (c *Client) MentionReply(m *Message, format string, v ...interface{}) error {
 	// Sanity check
-	if len(e.Params) < 1 || len(e.Params[0]) < 1 {
-		return errors.New("Invalid IRC event")
+	if len(m.Params) < 1 || len(m.Params[0]) < 1 {
+		return errors.New("Invalid IRC message")
 	}
 
-	if e.FromChannel() {
+	if m.FromChannel() {
 		format = "%s: " + format
-		v = prepend(e.Prefix.Name, v)
+		v = prepend(m.Prefix.Name, v)
 	}
 
-	return c.Reply(e, format, v...)
+	return c.Reply(m, format, v...)
 }
 
 // CTCPReply is a convenience function to respond to CTCP requests.
-func (c *Client) CTCPReply(e *Event, format string, v ...interface{}) error {
+func (c *Client) CTCPReply(m *Message, format string, v ...interface{}) error {
 	// Sanity check
-	if len(e.Params) < 1 || len(e.Params[0]) < 1 {
-		return errors.New("Invalid IRC event")
+	if len(m.Params) < 1 || len(m.Params[0]) < 1 {
+		return errors.New("Invalid IRC message")
 	}
 
-	v = prepend(e.Prefix.Name, v)
+	v = prepend(m.Prefix.Name, v)
 	c.Writef("NOTICE %s :\x01"+format+"\x01", v...)
 	return nil
 }

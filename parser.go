@@ -18,9 +18,9 @@ type Prefix struct {
 	Host string
 }
 
-// Event represents a line parsed from the server
-type Event struct {
-	// Each event can have a Prefix
+// Message represents a line parsed from the server
+type Message struct {
+	// Each message can have a Prefix
 	*Prefix
 
 	// Command is which command is being called.
@@ -79,17 +79,17 @@ func (p *Prefix) String() string {
 	return buf.String()
 }
 
-// ParseEvent takes an event string (usually a whole line) and parses
-// it into an Event struct. This will return nil in the case of
-// invalid events.
-func ParseEvent(line string) *Event {
+// ParseMessage takes a message string (usually a whole line) and
+// parses it into a Message struct. This will return nil in the case
+// of invalid messages.
+func ParseMessage(line string) *Message {
 	// Trim the line and make sure we have data
 	line = strings.TrimSpace(line)
 	if len(line) == 0 {
 		return nil
 	}
 
-	c := &Event{Prefix: &Prefix{}}
+	c := &Message{Prefix: &Prefix{}}
 
 	if line[0] == ':' {
 		split := strings.SplitN(line, " ", 2)
@@ -130,24 +130,24 @@ func ParseEvent(line string) *Event {
 	return c
 }
 
-// Trailing returns the last argument in the Event or an empty string
+// Trailing returns the last argument in the Message or an empty string
 // if there are no args
-func (e *Event) Trailing() string {
-	if len(e.Params) < 1 {
+func (m *Message) Trailing() string {
+	if len(m.Params) < 1 {
 		return ""
 	}
 
-	return e.Params[len(e.Params)-1]
+	return m.Params[len(m.Params)-1]
 }
 
-// FromChannel is mostly for PRIVMSG events (and similar derived events)
-// It will check if the event came from a channel or a person.
-func (e *Event) FromChannel() bool {
-	if len(e.Params) < 1 || len(e.Params[0]) < 1 {
+// FromChannel is mostly for PRIVMSG messages (and similar derived messages)
+// It will check if the message came from a channel or a person.
+func (m *Message) FromChannel() bool {
+	if len(m.Params) < 1 || len(m.Params[0]) < 1 {
 		return false
 	}
 
-	switch e.Params[0][0] {
+	switch m.Params[0][0] {
 	case '#', '&':
 		return true
 	default:
@@ -155,40 +155,40 @@ func (e *Event) FromChannel() bool {
 	}
 }
 
-// Copy will create a new copy of an event
-func (e *Event) Copy() *Event {
-	// Create a new event
-	newEvent := &Event{}
+// Copy will create a new copy of an message
+func (m *Message) Copy() *Message {
+	// Create a new message
+	newMessage := &Message{}
 
-	// Copy stuff from the old event
-	*newEvent = *e
+	// Copy stuff from the old message
+	*newMessage = *m
 
 	// Copy the Prefix
-	newEvent.Prefix = e.Prefix.Copy()
+	newMessage.Prefix = m.Prefix.Copy()
 
 	// Copy the Params slice
-	newEvent.Params = append(make([]string, 0, len(e.Params)), e.Params...)
+	newMessage.Params = append(make([]string, 0, len(m.Params)), m.Params...)
 
-	return newEvent
+	return newMessage
 }
 
 // String ensures this is stringable
-func (e *Event) String() string {
+func (m *Message) String() string {
 	buf := &bytes.Buffer{}
 
 	// Add the prefix if we have one
-	if e.Prefix.Name != "" {
+	if m.Prefix.Name != "" {
 		buf.WriteByte(':')
-		buf.WriteString(e.Prefix.String())
+		buf.WriteString(m.Prefix.String())
 		buf.WriteByte(' ')
 	}
 
 	// Add the command since we know we'll always have one
-	buf.WriteString(e.Command)
+	buf.WriteString(m.Command)
 
-	if len(e.Params) > 0 {
-		args := e.Params[:len(e.Params)-1]
-		trailing := e.Params[len(e.Params)-1]
+	if len(m.Params) > 0 {
+		args := m.Params[:len(m.Params)-1]
+		trailing := m.Params[len(m.Params)-1]
 
 		if len(args) > 0 {
 			buf.WriteByte(' ')

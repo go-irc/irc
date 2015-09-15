@@ -5,10 +5,10 @@ import (
 	"testing"
 )
 
-var eventTests = []struct {
-	// Event parsing
+var messageTests = []struct {
+	// Message parsing
 	Prefix, Cmd string
-	Params        []string
+	Params      []string
 
 	// Prefix parsing
 	Name, User, Host string
@@ -42,7 +42,7 @@ var eventTests = []struct {
 	{
 		Prefix: "server.kevlar.net",
 		Cmd:    "NOTICE",
-		Params:   []string{"user", "*** This is a test"},
+		Params: []string{"user", "*** This is a test"},
 
 		Name: "server.kevlar.net",
 
@@ -51,7 +51,7 @@ var eventTests = []struct {
 	{
 		Prefix: "belakA!belakB@a.host.com",
 		Cmd:    "PRIVMSG",
-		Params:   []string{"#somewhere", "*** This is a test"},
+		Params: []string{"#somewhere", "*** This is a test"},
 
 		Name: "belakA",
 		User: "belakB",
@@ -63,7 +63,7 @@ var eventTests = []struct {
 	{
 		Prefix: "freenode",
 		Cmd:    "005",
-		Params:   []string{"starkbot", "CHANLIMIT=#:120", "MORE", "are supported by this server"},
+		Params: []string{"starkbot", "CHANLIMIT=#:120", "MORE", "are supported by this server"},
 
 		Name: "freenode",
 
@@ -72,7 +72,7 @@ var eventTests = []struct {
 	{
 		Prefix: "belakA!belakB@a.host.com",
 		Cmd:    "PRIVMSG",
-		Params:   []string{"&somewhere", "*** This is a test"},
+		Params: []string{"&somewhere", "*** This is a test"},
 
 		Name: "belakA",
 		User: "belakB",
@@ -84,7 +84,7 @@ var eventTests = []struct {
 	{
 		Prefix: "belakA!belakB@a.host.com",
 		Cmd:    "PRIVMSG",
-		Params:   []string{"belak", "*** This is a test"},
+		Params: []string{"belak", "*** This is a test"},
 
 		Name: "belakA",
 		User: "belakB",
@@ -95,7 +95,7 @@ var eventTests = []struct {
 	{
 		Prefix: "A",
 		Cmd:    "B",
-		Params:   []string{"C"},
+		Params: []string{"C"},
 
 		Name: "A",
 
@@ -104,7 +104,7 @@ var eventTests = []struct {
 	{
 		Prefix: "A@B",
 		Cmd:    "C",
-		Params:   []string{"D"},
+		Params: []string{"D"},
 
 		Name: "A",
 		Host: "B",
@@ -113,13 +113,13 @@ var eventTests = []struct {
 	},
 	{
 		Cmd:    "B",
-		Params:   []string{"C"},
+		Params: []string{"C"},
 		Expect: "B C\n",
 	},
 	{
 		Prefix: "A",
 		Cmd:    "B",
-		Params:   []string{"C", "D"},
+		Params: []string{"C", "D"},
 
 		Name: "A",
 
@@ -127,42 +127,42 @@ var eventTests = []struct {
 	},
 }
 
-func TestParseEvent(t *testing.T) {
-	for i, test := range eventTests {
-		e := ParseEvent(test.Expect)
-		if e == nil && !test.IsNil {
-			t.Errorf("%d. Got nil for valid event", i)
-		} else if e != nil && test.IsNil {
-			t.Errorf("%d. Didn't get nil for invalid event", i)
+func TestParseMessage(t *testing.T) {
+	for i, test := range messageTests {
+		m := ParseMessage(test.Expect)
+		if m == nil && !test.IsNil {
+			t.Errorf("%d. Got nil for valid message", i)
+		} else if m != nil && test.IsNil {
+			t.Errorf("%d. Didn't get nil for invalid message", i)
 		}
 
-		if e == nil {
+		if m == nil {
 			continue
 		}
 
-		if test.Cmd != e.Command {
-			t.Errorf("%d. command = %q, want %q", i, e.Command, test.Cmd)
+		if test.Cmd != m.Command {
+			t.Errorf("%d. command = %q, want %q", i, m.Command, test.Cmd)
 		}
-		if len(test.Params) != len(e.Params) {
-			t.Errorf("%d. args = %v, want %v", i, e.Params, test.Params)
+		if len(test.Params) != len(m.Params) {
+			t.Errorf("%d. args = %v, want %v", i, m.Params, test.Params)
 		} else {
-			for j := 0; j < len(test.Params) && j < len(e.Params); j++ {
-				if test.Params[j] != e.Params[j] {
-					t.Errorf("%d. arg[%d] = %q, want %q", i, j, e.Params[j], test.Params[j])
+			for j := 0; j < len(test.Params) && j < len(m.Params); j++ {
+				if test.Params[j] != m.Params[j] {
+					t.Errorf("%d. arg[%d] = %q, want %q", i, j, m.Params[j], test.Params[j])
 				}
 			}
 		}
 	}
 }
 
-func BenchmarkParseEvent(b *testing.B) {
+func BenchmarkParseMessage(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		ParseEvent(eventTests[i%len(eventTests)].Prefix)
+		ParseMessage(messageTests[i%len(messageTests)].Prefix)
 	}
 }
 
 func TestParsePrefix(t *testing.T) {
-	for i, test := range eventTests {
+	for i, test := range messageTests {
 		// TODO: Not sure if we should be skipping empty strings or handling them.
 		if test.Prefix == "" {
 			continue
@@ -187,18 +187,18 @@ func TestParsePrefix(t *testing.T) {
 
 func BenchmarkParsePrefix(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		ParsePrefix(eventTests[i%len(eventTests)].Expect)
+		ParsePrefix(messageTests[i%len(messageTests)].Expect)
 	}
 }
 
-func TestEventTrailing(t *testing.T) {
-	for i, test := range eventTests {
+func TestMessageTrailing(t *testing.T) {
+	for i, test := range messageTests {
 		if test.IsNil {
 			continue
 		}
 
-		e := ParseEvent(test.Expect)
-		tr := e.Trailing()
+		m := ParseMessage(test.Expect)
+		tr := m.Trailing()
 		if len(test.Params) < 1 {
 			if tr != "" {
 				t.Errorf("%d. trailing = %q, want %q", i, tr, "")
@@ -209,55 +209,55 @@ func TestEventTrailing(t *testing.T) {
 	}
 }
 
-func TestEventFromChan(t *testing.T) {
-	for i, test := range eventTests {
+func TestMessageFromChan(t *testing.T) {
+	for i, test := range messageTests {
 		if test.IsNil {
 			continue
 		}
 
-		e := ParseEvent(test.Expect)
-		if e.FromChannel() != test.FromChan {
-			t.Errorf("%d. fromchannel = %v, want %v", i, e.FromChannel(), test.FromChan)
+		m := ParseMessage(test.Expect)
+		if m.FromChannel() != test.FromChan {
+			t.Errorf("%d. fromchannel = %v, want %v", i, m.FromChannel(), test.FromChan)
 		}
 	}
 }
 
-func TestEventCopy(t *testing.T) {
-	for i, test := range eventTests {
+func TestMessageCopy(t *testing.T) {
+	for i, test := range messageTests {
 		if test.IsNil {
 			continue
 		}
 
-		e := ParseEvent(test.Expect)
-		c := e.Copy()
+		m := ParseMessage(test.Expect)
+		c := m.Copy()
 
-		if !reflect.DeepEqual(e, c) {
-			t.Errorf("%d. copy = %q, want %q", i, e, c)
+		if !reflect.DeepEqual(m, c) {
+			t.Errorf("%d. copy = %q, want %q", i, m, c)
 		}
 
 		if c.Prefix != nil {
 			c.Prefix.Name += "junk"
-			if reflect.DeepEqual(e, c) {
+			if reflect.DeepEqual(m, c) {
 				t.Errorf("%d. copyidentity matched when it shouldn't", i)
 			}
 		}
 
 		c.Params = append(c.Params, "junk")
-		if reflect.DeepEqual(e, c) {
+		if reflect.DeepEqual(m, c) {
 			t.Errorf("%d. copyargs matched when it shouldn't", i)
 		}
 	}
 }
 
-func TestEventString(t *testing.T) {
-	for i, test := range eventTests {
+func TestMessageString(t *testing.T) {
+	for i, test := range messageTests {
 		if test.IsNil {
 			continue
 		}
 
-		e := ParseEvent(test.Expect)
-		if e.String()+"\n" != test.Expect {
-			t.Errorf("%d. %s did not match %s", i, e.String(), test.Expect)
+		m := ParseMessage(test.Expect)
+		if m.String()+"\n" != test.Expect {
+			t.Errorf("%d. %s did not match %s", i, m.String(), test.Expect)
 		}
 	}
 }
