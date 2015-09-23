@@ -49,6 +49,8 @@ func (c *Client) ReadMessage() (*Message, error) {
 		if m.Prefix.Name == c.currentNick && len(m.Params) > 0 {
 			c.currentNick = m.Params[0]
 		}
+	} else if m.Command == "PING" {
+		c.Writef("PONG :%s", m.Trailing())
 	} else if m.Command == "001" {
 		c.currentNick = m.Params[0]
 	} else if m.Command == "437" || m.Command == "433" {

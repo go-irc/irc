@@ -9,6 +9,11 @@ import (
 
 // Conn represents a simple IRC client.
 type Conn struct {
+	// DebugCallback is a callback for every line of input and
+	// output. It is meant for debugging and is not guaranteed to
+	// be stable.
+	DebugCallback func(line string)
+
 	// Internal things
 	conn io.ReadWriteCloser
 	in   *bufio.Reader
@@ -18,6 +23,7 @@ type Conn struct {
 func NewConn(rwc io.ReadWriteCloser) *Conn {
 	// Create the client
 	c := &Conn{
+		func(line string) {},
 		rwc,
 		bufio.NewReader(rwc),
 	}
@@ -28,6 +34,7 @@ func NewConn(rwc io.ReadWriteCloser) *Conn {
 // Write is a simple function which will write the given line to the
 // underlying connection.
 func (c *Conn) Write(line string) {
+	c.DebugCallback("--> %s" + line)
 	c.conn.Write([]byte(line))
 	c.conn.Write([]byte("\r\n"))
 }
@@ -51,6 +58,8 @@ func (c *Conn) ReadMessage() (*Message, error) {
 		return nil, err
 	}
 
+	c.DebugCallback("<-- %s" + strings.TrimRight(line, "\r\n"))
+
 	// Parse the message from our line
 	m := ParseMessage(line)
 
@@ -65,8 +74,6 @@ func (c *Conn) ReadMessage() (*Message, error) {
 		if i := strings.LastIndex(lastArg, "\x01"); i > -1 {
 			m.Params[len(m.Params)-1] = lastArg[1:i]
 		}
-	} else if m.Command == "PING" {
-		c.Writef("PONG :%s", lastArg)
 	}
 
 	return m, nil
