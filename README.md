@@ -3,40 +3,46 @@
 [![Build Status](https://travis-ci.org/belak/irc.svg?branch=master)](https://travis-ci.org/belak/irc)
 [![Coverage Status](https://coveralls.io/repos/belak/irc/badge.svg?branch=master&service=github)](https://coveralls.io/github/belak/irc?branch=master)
 
-irc is a simple golang irc library based around the idea of simple handlers.
+irc is a simple, low-ish level golang irc library which is meant to
+only read and write messages from a given stream. There are a number
+of other libraries which provide a more full featured client if that's
+what you're looking for. This library is more of a building block for
+other things to build on.
 
-## Usage
+## Example
 
-```
+```go
 package main
 
 import (
-	"github.com/belak/irc"
-	"log"
+        "log"
+        "net"
+
+        "github.com/belak/irc"
 )
 
 func main() {
-	// Create a mux to handle different events
-	handler := irc.NewBasicMux()
+        conn, err := net.Dial("tcp", "chat.freenode.net:6667")
+        if err != nil {
+                log.Fatalln(err)
+        }
 
-	// Create the client
-	client := irc.NewClient(irc.HandlerFunc(handler.HandleEvent), "i_have_a_nick", "user", "name", "pass")
+        // Create the client
+        client := irc.NewClient(conn, "i_have_a_nick", "user", "name", "pass")
 
-	// 001 is a welcome event, so we join channels there
-	handler.Event("001", func(c *irc.Client, e *irc.Event) {
-		c.Write("JOIN #bot-test-chan")
-	})
+        for {
+                m, err := client.ReadMessage()
+                if err != nil {
+                        log.Fatalln(err)
+                }
 
-	// Create a handler on all messages.
-	handler.Event("PRIVMSG", func(c *irc.Client, e *irc.Event) {
-		c.MentionReply(e, e.Trailing())
-	})
-
-	// Connect to the server
-	// Note that the framework does not currently handle reconnecting
-	err := client.Dial("chat.freenode.net:6667")
-	if err != nil {
-		log.Fatalln(err)
-	}
+                if m.Command == "001" {
+                        // 001 is a welcome event, so we join channels there
+                        c.Write("JOIN #bot-test-chan")
+                } else if m.Command == "PRIVMSG" {
+                        // Create a handler on all messages.
+                        c.MentionReply(e, e.Trailing())
+                }
+        }
 }
 ```
