@@ -3,6 +3,7 @@ package irc
 import (
 	"errors"
 	"io"
+	"log"
 )
 
 // Client represents a simple IRC client.
@@ -20,6 +21,10 @@ func NewClient(rwc io.ReadWriteCloser, nick, user, name, pass string) *Client {
 	c := &Client{
 		NewConn(rwc),
 		nick,
+	}
+
+	c.Conn.DebugCallback = func(line string) {
+		log.Println(line)
 	}
 
 	// Send the info we need to
