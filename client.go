@@ -2,11 +2,9 @@ package irc
 
 import (
 	"bufio"
-	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
-	"net"
 	"strconv"
 	"strings"
 	"time"
@@ -21,28 +19,6 @@ type Client struct {
 	currentNick string
 	conn        io.ReadWriteCloser
 	in          *bufio.Reader
-}
-
-// Dial connects to the given address and creates a new Client using
-// the TCP connection as a transport.
-func Dial(addr string, nick, user, name, pass string) (*Client, error) {
-	conn, err := net.Dial("tcp", addr)
-	if err != nil {
-		return nil, err
-	}
-
-	return NewClient(conn, nick, user, name, pass), nil
-}
-
-// DialTLS connects to the given address and creates a new Client
-// using the TLS connection as a transport.
-func DialTLS(addr string, c *tls.Config, nick, user, name, pass string) (*Client, error) {
-	conn, err := tls.Dial("tcp", addr, c)
-	if err != nil {
-		return nil, err
-	}
-
-	return NewClient(conn, nick, user, name, pass), nil
 }
 
 // NewClient creates a new Client and sends the initial messages to
