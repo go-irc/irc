@@ -55,7 +55,7 @@ func testLines(t *testing.T, rwc *testReadWriteCloser, expected []string) {
 
 	for _, line := range lines {
 		if strings.TrimSpace(line) != "" {
-			t.Errorf("Extra non-empty lines")
+			t.Errorf("Extra non-empty lines: %s", line)
 		}
 	}
 
