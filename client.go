@@ -9,6 +9,10 @@ import (
 type Client struct {
 	*Conn
 
+	// NickCollisionCallback is a simple callback which returns a
+	// replacement nick for the given client on nick collision.
+	NickCollisionCallback func(c *Client) string
+
 	// Internal things
 	currentNick string
 }
@@ -19,6 +23,9 @@ func NewClient(rwc io.ReadWriteCloser, nick, user, name, pass string) *Client {
 	// Create the client
 	c := &Client{
 		NewConn(rwc),
+		func(c *Client) string {
+			return c.CurrentNick() + "_"
+		},
 		nick,
 	}
 
@@ -54,7 +61,7 @@ func (c *Client) ReadMessage() (*Message, error) {
 	} else if m.Command == "001" {
 		c.currentNick = m.Params[0]
 	} else if m.Command == "437" || m.Command == "433" {
-		c.currentNick = c.currentNick + "_"
+		c.currentNick = c.NickCollisionCallback(c)
 		c.Writef("NICK %s", c.currentNick)
 	}
 
