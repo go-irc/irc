@@ -5,16 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"strconv"
 	"strings"
-	"time"
 )
 
 // Client represents a simple IRC client.
 type Client struct {
-	// Logger for messages. By defaut this will be a NilLogger
-	Logger Logger
-
 	// Internal things
 	currentNick string
 	conn        io.ReadWriteCloser
@@ -26,7 +21,6 @@ type Client struct {
 func NewClient(rwc io.ReadWriteCloser, nick, user, name, pass string) *Client {
 	// Create the client
 	c := &Client{
-		&NilLogger{},
 		nick,
 		rwc,
 		bufio.NewReader(rwc),
@@ -51,9 +45,6 @@ func (c *Client) CurrentNick() string {
 // Write is a simple function which will write the given line to the
 // underlying connection.
 func (c *Client) Write(line string) {
-	if c.Logger != nil {
-		c.Logger.Debug("-->", line)
-	}
 	c.conn.Write([]byte(line))
 	c.conn.Write([]byte("\r\n"))
 }
@@ -77,10 +68,6 @@ func (c *Client) ReadMessage() (*Message, error) {
 		return nil, err
 	}
 
-	if c.Logger != nil {
-		c.Logger.Debug("<--", strings.TrimRight(line, "\r\n"))
-	}
-
 	// Parse the message from our line
 	m := ParseMessage(line)
 
@@ -97,13 +84,6 @@ func (c *Client) ReadMessage() (*Message, error) {
 		}
 	} else if m.Command == "PING" {
 		c.Writef("PONG :%s", lastArg)
-	} else if m.Command == "PONG" {
-		ns, _ := strconv.ParseInt(lastArg, 10, 64)
-		delta := time.Duration(time.Now().UnixNano() - ns)
-
-		if c.Logger != nil {
-			c.Logger.Info("!!! Lag:", delta)
-		}
 	} else if m.Command == "NICK" {
 		if m.Prefix.Name == c.currentNick && len(m.Params) > 0 {
 			c.currentNick = m.Params[0]
