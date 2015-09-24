@@ -64,7 +64,7 @@ func testLines(t *testing.T, rwc *testReadWriteCloser, expected []string) {
 	rwc.server.Reset()
 }
 
-func TestClient(t *testing.T) {
+func TestConn(t *testing.T) {
 	rwc := newTestReadWriteCloser()
 	c := NewConn(rwc)
 
