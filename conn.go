@@ -34,7 +34,7 @@ func NewConn(rwc io.ReadWriteCloser) *Conn {
 // Write is a simple function which will write the given line to the
 // underlying connection.
 func (c *Conn) Write(line string) {
-	c.DebugCallback("--> %s" + line)
+	c.DebugCallback("--> " + line)
 	c.conn.Write([]byte(line))
 	c.conn.Write([]byte("\r\n"))
 }
@@ -58,7 +58,7 @@ func (c *Conn) ReadMessage() (*Message, error) {
 		return nil, err
 	}
 
-	c.DebugCallback("<-- %s" + strings.TrimRight(line, "\r\n"))
+	c.DebugCallback("<-- " + strings.TrimRight(line, "\r\n"))
 
 	// Parse the message from our line
 	m := ParseMessage(line)
