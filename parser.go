@@ -98,7 +98,7 @@ func ParseMessage(line string) *Message {
 		}
 
 		// Parse the identity, if there was one
-		c.Prefix = ParsePrefix(string(split[0][1:]))
+		c.Prefix = ParsePrefix(split[0][1:])
 		line = split[1]
 	}
 

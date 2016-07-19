@@ -3,6 +3,8 @@ package irc
 import (
 	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 var messageTests = []struct {
@@ -34,6 +36,7 @@ var messageTests = []struct {
 	{
 		Prefix: "server.kevlar.net",
 		Cmd:    "PING",
+		Params: []string{},
 
 		Name: "server.kevlar.net",
 
@@ -130,28 +133,18 @@ var messageTests = []struct {
 func TestParseMessage(t *testing.T) {
 	for i, test := range messageTests {
 		m := ParseMessage(test.Expect)
-		if m == nil && !test.IsNil {
-			t.Errorf("%d. Got nil for valid message", i)
-		} else if m != nil && test.IsNil {
-			t.Errorf("%d. Didn't get nil for invalid message", i)
+		if test.IsNil {
+			assert.Nil(t, m, "%d. Didn't get nil for invalid message.", i)
+		} else {
+			assert.NotNil(t, m, "%d. Got nil for valid message.", i)
 		}
 
 		if m == nil {
 			continue
 		}
 
-		if test.Cmd != m.Command {
-			t.Errorf("%d. command = %q, want %q", i, m.Command, test.Cmd)
-		}
-		if len(test.Params) != len(m.Params) {
-			t.Errorf("%d. args = %v, want %v", i, m.Params, test.Params)
-		} else {
-			for j := 0; j < len(test.Params) && j < len(m.Params); j++ {
-				if test.Params[j] != m.Params[j] {
-					t.Errorf("%d. arg[%d] = %q, want %q", i, j, m.Params[j], test.Params[j])
-				}
-			}
-		}
+		assert.Equal(t, test.Cmd, m.Command, "%d. Command doesn't match.", i)
+		assert.EqualValues(t, test.Params, m.Params, "%d. Params don't match.", i)
 	}
 }
 

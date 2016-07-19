@@ -4,11 +4,14 @@ before_install:
   - go get github.com/axw/gocov/gocov
   - go get github.com/mattn/goveralls
   - go get golang.org/x/tools/cmd/cover
-  - go get github.com/golang/lint/golint
+  # Test deps
+  - go get github.com/stretchr/testify
+  # Linting deps
+  - go get github.com/alecthomas/gometalinter
+  - gometalinter --install
 
 script:
-  - go vet -x ./...
-  - $HOME/gopath/bin/golint ./...
+  - gometalinter --fast ./...
   - go test -v ./...
   - go test -covermode=count -coverprofile=profile.cov
 
