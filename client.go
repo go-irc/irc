@@ -1,10 +1,6 @@
 package irc
 
-import (
-	"crypto/tls"
-	"io"
-	"net"
-)
+import "io"
 
 // ClientConfig is a structure used to configure a Client.
 type ClientConfig struct {
@@ -34,28 +30,6 @@ func NewClient(rwc io.ReadWriteCloser, config ClientConfig) *Client {
 		Conn:   NewConn(rwc),
 		config: config,
 	}
-}
-
-// Dial will connect to the host and create a client with the given
-// ClientConfig.
-func Dial(host string, config ClientConfig) (*Client, error) {
-	conn, err := net.Dial("tcp", host)
-	if err != nil {
-		return nil, err
-	}
-
-	return NewClient(conn, config), nil
-}
-
-// DialTLS will connect to the host using the tlsConf and create a client with
-// the given ClientConfig.
-func DialTLS(host string, tlsConf *tls.Config, config ClientConfig) (*Client, error) {
-	conn, err := tls.Dial("tcp", host, tlsConf)
-	if err != nil {
-		return nil, err
-	}
-
-	return NewClient(conn, config), nil
 }
 
 // Run starts the main loop for this IRC connection. Note that it may break in
