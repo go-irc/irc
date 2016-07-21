@@ -4,8 +4,8 @@ before_install:
   - go get github.com/axw/gocov/gocov
   - go get github.com/mattn/goveralls
   - go get golang.org/x/tools/cmd/cover
-  # Test deps
-  - go test -v -i
+  # Grab all deps (should just be test deps)
+  - go get -v -t ./...
   # Linting deps
   - go get github.com/alecthomas/gometalinter
   - gometalinter --install
