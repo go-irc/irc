@@ -7,6 +7,8 @@ import (
 )
 
 func TestHandlerFunc(t *testing.T) {
+	t.Parallel()
+
 	hit := false
 	var f HandlerFunc = func(c *Client, m *Message) {
 		hit = true

@@ -60,6 +60,8 @@ func testLines(t *testing.T, rwc *testReadWriteCloser, expected []string) {
 }
 
 func TestConn(t *testing.T) {
+	t.Parallel()
+
 	rwc := newTestReadWriteCloser()
 	c := NewConn(rwc)
 

@@ -131,6 +131,8 @@ var messageTests = []struct {
 }
 
 func TestParseMessage(t *testing.T) {
+	t.Parallel()
+
 	for i, test := range messageTests {
 		m := ParseMessage(test.Expect)
 		if test.IsNil {
@@ -155,6 +157,8 @@ func BenchmarkParseMessage(b *testing.B) {
 }
 
 func TestParsePrefix(t *testing.T) {
+	t.Parallel()
+
 	for i, test := range messageTests {
 		// TODO: Not sure if we should be skipping empty strings or handling them.
 		if test.Prefix == "" {
@@ -185,6 +189,8 @@ func BenchmarkParsePrefix(b *testing.B) {
 }
 
 func TestMessageTrailing(t *testing.T) {
+	t.Parallel()
+
 	for i, test := range messageTests {
 		if test.IsNil {
 			continue
@@ -203,6 +209,8 @@ func TestMessageTrailing(t *testing.T) {
 }
 
 func TestMessageFromChan(t *testing.T) {
+	t.Parallel()
+
 	for i, test := range messageTests {
 		if test.IsNil {
 			continue
@@ -216,6 +224,8 @@ func TestMessageFromChan(t *testing.T) {
 }
 
 func TestMessageCopy(t *testing.T) {
+	t.Parallel()
+
 	for i, test := range messageTests {
 		if test.IsNil {
 			continue
@@ -243,6 +253,8 @@ func TestMessageCopy(t *testing.T) {
 }
 
 func TestMessageString(t *testing.T) {
+	t.Parallel()
+
 	for i, test := range messageTests {
 		if test.IsNil {
 			continue
