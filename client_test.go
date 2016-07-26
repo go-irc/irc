@@ -22,6 +22,8 @@ func (th *TestHandler) Messages() []*Message {
 }
 
 func TestClient(t *testing.T) {
+	t.Parallel()
+
 	rwc := newTestReadWriteCloser()
 	config := ClientConfig{
 		Nick: "test_nick",
@@ -82,6 +84,8 @@ func TestClient(t *testing.T) {
 }
 
 func TestClientHandler(t *testing.T) {
+	t.Parallel()
+
 	handler := &TestHandler{}
 	rwc := newTestReadWriteCloser()
 	config := ClientConfig{
