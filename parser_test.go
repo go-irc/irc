@@ -1,7 +1,6 @@
 package irc
 
 import (
-	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -170,15 +169,10 @@ func TestParsePrefix(t *testing.T) {
 			t.Errorf("%d. Got nil for valid identity", i)
 			continue
 		}
-		if test.Name != pi.Name {
-			t.Errorf("%d. name = %q, want %q", i, pi.Name, test.Name)
-		}
-		if test.User != pi.User {
-			t.Errorf("%d. user = %q, want %q", i, pi.User, test.User)
-		}
-		if test.Host != pi.Host {
-			t.Errorf("%d. host = %q, want %q", i, pi.Host, test.Host)
-		}
+
+		assert.Equal(t, test.Name, pi.Name, "%d. Wrong Name", i)
+		assert.Equal(t, test.User, pi.User, "%d. Wrong User", i)
+		assert.Equal(t, test.Host, pi.Host, "%d. Wrong Host", i)
 	}
 }
 
@@ -199,11 +193,9 @@ func TestMessageTrailing(t *testing.T) {
 		m := ParseMessage(test.Expect)
 		tr := m.Trailing()
 		if len(test.Params) < 1 {
-			if tr != "" {
-				t.Errorf("%d. trailing = %q, want %q", i, tr, "")
-			}
-		} else if tr != test.Params[len(test.Params)-1] {
-			t.Errorf("%d. trailing = %q, want %q", i, tr, test.Params[len(test.Params)-1])
+			assert.Equal(t, "", tr, "%d. Expected empty trailing", i)
+		} else {
+			assert.Equal(t, test.Params[len(test.Params)-1], tr, "%d. Expected matching traling", i)
 		}
 	}
 }
@@ -217,9 +209,7 @@ func TestMessageFromChan(t *testing.T) {
 		}
 
 		m := ParseMessage(test.Expect)
-		if m.FromChannel() != test.FromChan {
-			t.Errorf("%d. fromchannel = %v, want %v", i, m.FromChannel(), test.FromChan)
-		}
+		assert.Equal(t, test.FromChan, m.FromChannel(), "%d. Wrong FromChannel value", i)
 	}
 }
 
@@ -234,21 +224,16 @@ func TestMessageCopy(t *testing.T) {
 		m := ParseMessage(test.Expect)
 		c := m.Copy()
 
-		if !reflect.DeepEqual(m, c) {
-			t.Errorf("%d. copy = %q, want %q", i, m, c)
-		}
+		assert.EqualValues(t, m, c, "%d. Copied values are not equal", i)
 
 		if c.Prefix != nil {
 			c.Prefix.Name += "junk"
-			if reflect.DeepEqual(m, c) {
-				t.Errorf("%d. copyidentity matched when it shouldn't", i)
-			}
+
+			assert.False(t, assert.ObjectsAreEqualValues(m, c), "%d. Copied with modified identity should not match", i)
 		}
 
 		c.Params = append(c.Params, "junk")
-		if reflect.DeepEqual(m, c) {
-			t.Errorf("%d. copyargs matched when it shouldn't", i)
-		}
+		assert.False(t, assert.ObjectsAreEqualValues(m, c), "%d. Copied with additional params should not match", i)
 	}
 }
 
@@ -261,8 +246,6 @@ func TestMessageString(t *testing.T) {
 		}
 
 		m := ParseMessage(test.Expect)
-		if m.String()+"\n" != test.Expect {
-			t.Errorf("%d. %s did not match %s", i, m.String(), test.Expect)
-		}
+		assert.Equal(t, test.Expect, m.String()+"\n", "%d. Message Stringification failed", i)
 	}
 }
