@@ -11,12 +11,16 @@ var messageTests = []struct {
 	Prefix, Cmd string
 	Params      []string
 
+	// Tag parsing
+	Tags Tags
+
 	// Prefix parsing
 	Name, User, Host string
 
 	// Total output
-	Expect string
-	IsNil  bool
+	Expect   string
+	ExpectIn []string
+	IsNil    bool
 
 	// FromChannel
 	FromChan bool
@@ -30,6 +34,10 @@ var messageTests = []struct {
 	},
 	{
 		Expect: ":A",
+		IsNil:  true,
+	},
+	{
+		Expect: "@A",
 		IsNil:  true,
 	},
 	{
@@ -126,6 +134,89 @@ var messageTests = []struct {
 		Name: "A",
 
 		Expect: ":A B C D\n",
+	},
+	{
+		Tags: Tags{
+			"tag": "value",
+		},
+
+		Params: []string{},
+		Cmd:    "A",
+
+		Expect: "@tag=value A\n",
+	},
+	{
+		Tags: Tags{
+			"tag": "\n",
+		},
+
+		Params: []string{},
+		Cmd:    "A",
+
+		Expect: "@tag=\\n A\n",
+	},
+	{
+		Tags: Tags{
+			"tag": "\\",
+		},
+
+		Params: []string{},
+		Cmd:    "A",
+
+		Expect:   "@tag=\\ A\n",
+		ExpectIn: []string{"@tag=\\\\ A\n"},
+	},
+	{
+		Tags: Tags{
+			"tag": ";",
+		},
+
+		Params: []string{},
+		Cmd:    "A",
+
+		Expect: "@tag=\\: A\n",
+	},
+	{
+		Tags: Tags{
+			"tag": "",
+		},
+
+		Params: []string{},
+		Cmd:    "A",
+
+		Expect: "@tag A\n",
+	},
+	{
+		Tags: Tags{
+			"tag": "\\&",
+		},
+
+		Params: []string{},
+		Cmd:    "A",
+
+		Expect:   "@tag=\\& A\n",
+		ExpectIn: []string{"@tag=\\\\& A\n"},
+	},
+	{
+		Tags: Tags{
+			"tag":  "x",
+			"tag2": "asd",
+		},
+
+		Params: []string{},
+		Cmd:    "A",
+
+		Expect:   "@tag=x;tag2=asd A\n",
+		ExpectIn: []string{"@tag=x;tag2=asd A\n", "@tag2=asd;tag=x A\n"},
+	},
+	{
+		Tags: Tags{
+			"tag": "; \\\r\n",
+		},
+
+		Params: []string{},
+		Cmd:    "A",
+		Expect: "@tag=\\:\\s\\\\\\r\\n A\n",
 	},
 }
 
@@ -246,6 +337,32 @@ func TestMessageString(t *testing.T) {
 		}
 
 		m := ParseMessage(test.Expect)
-		assert.Equal(t, test.Expect, m.String()+"\n", "%d. Message Stringification failed", i)
+		if test.ExpectIn != nil {
+			assert.Contains(t, test.ExpectIn, m.String()+"\n", "%d. Message Stringification failed", i)
+		} else {
+			assert.Equal(t, test.Expect, m.String()+"\n", "%d. Message Stringification failed", i)
+		}
+	}
+}
+
+func TestMessageTags(t *testing.T) {
+	t.Parallel()
+
+	for i, test := range messageTests {
+		if test.IsNil || test.Tags == nil {
+			continue
+		}
+
+		m := ParseMessage(test.Expect)
+		assert.EqualValues(t, test.Tags, m.Tags, "%d. Tag parsing failed", i)
+
+		// Ensure we have all the tags we expected.
+		for k, v := range test.Tags {
+			tag, ok := m.GetTag(k)
+			assert.True(t, ok, "%d. Missing tag %q", i, k)
+			assert.EqualValues(t, v, tag, "%d. Wrong tag value", i)
+		}
+
+		assert.EqualValues(t, test.Tags, m.Tags, "%d. Tags don't match", i)
 	}
 }
