@@ -250,20 +250,17 @@ func TestParsePrefix(t *testing.T) {
 	t.Parallel()
 
 	for i, test := range messageTests {
-		// TODO: Not sure if we should be skipping empty strings or handling them.
-		if test.Prefix == "" {
-			continue
-		}
-
 		pi := ParsePrefix(test.Prefix)
 		if pi == nil {
 			t.Errorf("%d. Got nil for valid identity", i)
 			continue
 		}
 
-		assert.Equal(t, test.Name, pi.Name, "%d. Wrong Name", i)
-		assert.Equal(t, test.User, pi.User, "%d. Wrong User", i)
-		assert.Equal(t, test.Host, pi.Host, "%d. Wrong Host", i)
+		assert.EqualValues(t, &Prefix{
+			Name: test.Name,
+			User: test.User,
+			Host: test.Host,
+		}, pi, "%d. Identity did not match", i)
 	}
 }
 
