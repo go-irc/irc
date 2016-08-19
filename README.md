@@ -1,7 +1,7 @@
 # irc
 
-[![Build Status](https://travis-ci.org/belak/irc.svg?branch=master)](https://travis-ci.org/belak/irc)
-[![Coverage Status](https://coveralls.io/repos/belak/irc/badge.svg?branch=master&service=github)](https://coveralls.io/github/belak/irc?branch=master)
+[![Build Status](https://img.shields.io/travis/belak/irc.svg)](https://travis-ci.org/belak/irc)
+[![Coverage Status](https://img.shields.io/coveralls/belak/irc.svg)](https://coveralls.io/github/belak/irc?branch=master)
 
 irc is a simple, low-ish level golang irc library which is meant to
 only read and write messages from a given stream. There are a number
