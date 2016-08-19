@@ -39,11 +39,11 @@ func (c *Client) Run() error {
 	c.currentNick = c.config.Nick
 
 	if c.config.Pass != "" {
-		c.Writef("PASS :%s", c.config.Pass)
+		c.Conn.Writef("PASS :%s", c.config.Pass)
 	}
 
-	c.Writef("NICK :%s", c.config.Nick)
-	c.Writef("USER %s 0.0.0.0 0.0.0.0 :%s", c.config.User, c.config.Name)
+	c.Conn.Writef("NICK :%s", c.config.Nick)
+	c.Conn.Writef("USER %s 0.0.0.0 0.0.0.0 :%s", c.config.User, c.config.Name)
 
 	for {
 		m, err := c.ReadMessage()
@@ -55,7 +55,7 @@ func (c *Client) Run() error {
 		case "PING":
 			reply := m.Copy()
 			reply.Command = "PONG"
-			c.WriteMessage(reply)
+			c.Conn.WriteMessage(reply)
 		case "NICK":
 			if m.Prefix.Name == c.currentNick && len(m.Params) > 0 {
 				c.currentNick = m.Params[0]
@@ -64,7 +64,7 @@ func (c *Client) Run() error {
 			c.currentNick = m.Params[0]
 		case "433", "437":
 			c.currentNick = c.currentNick + "_"
-			c.Writef("NICK :%s", c.currentNick)
+			c.Conn.Writef("NICK :%s", c.currentNick)
 		}
 
 		if c.config.Handler != nil {
