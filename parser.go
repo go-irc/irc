@@ -102,6 +102,18 @@ func (t Tags) GetTag(key string) (string, bool) {
 	return string(ret), ok
 }
 
+// Copy will create a new copy of all IRC tags attached to this
+// message.
+func (t Tags) Copy() Tags {
+	ret := Tags{}
+
+	for k, v := range t {
+		ret[k] = v
+	}
+
+	return ret
+}
+
 // String ensures this is stringable
 func (t Tags) String() string {
 	buf := &bytes.Buffer{}
@@ -159,6 +171,10 @@ func ParsePrefix(line string) *Prefix {
 
 // Copy will create a new copy of an Prefix
 func (p *Prefix) Copy() *Prefix {
+	if p == nil {
+		return nil
+	}
+
 	newPrefix := &Prefix{}
 
 	*newPrefix = *p
@@ -296,6 +312,9 @@ func (m *Message) Copy() *Message {
 	// Copy stuff from the old message
 	*newMessage = *m
 
+	// Copy any IRcv3 tags
+	newMessage.Tags = m.Tags.Copy()
+
 	// Copy the Prefix
 	newMessage.Prefix = m.Prefix.Copy()
 
@@ -317,7 +336,7 @@ func (m *Message) String() string {
 	}
 
 	// Add the prefix if we have one
-	if m.Prefix.Name != "" {
+	if m.Prefix != nil && m.Prefix.Name != "" {
 		buf.WriteByte(':')
 		buf.WriteString(m.Prefix.String())
 		buf.WriteByte(' ')

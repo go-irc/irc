@@ -313,19 +313,36 @@ func TestMessageCopy(t *testing.T) {
 		}
 
 		m := ParseMessage(test.Expect)
-		c := m.Copy()
 
+		c := m.Copy()
 		assert.EqualValues(t, m, c, "%d. Copied values are not equal", i)
 
-		if c.Prefix != nil {
-			c.Prefix.Name += "junk"
+		if len(m.Tags) > 0 {
+			c = m.Copy()
+			for k := range c.Tags {
+				c.Tags[k] += "junk"
+			}
 
-			assert.False(t, assert.ObjectsAreEqualValues(m, c), "%d. Copied with modified identity should not match", i)
+			assert.False(t, assert.ObjectsAreEqualValues(m, c), "%d. Copied with modified tags should not match", i)
 		}
 
+		c = m.Copy()
+		c.Prefix.Name += "junk"
+		assert.False(t, assert.ObjectsAreEqualValues(m, c), "%d. Copied with modified identity should not match", i)
+
+		c = m.Copy()
 		c.Params = append(c.Params, "junk")
 		assert.False(t, assert.ObjectsAreEqualValues(m, c), "%d. Copied with additional params should not match", i)
 	}
+
+	// The message itself doesn't matter, we just need to make sure we
+	// don't error if the user does something crazy and makes Params
+	// nil.
+	m := ParseMessage("PING :hello world")
+	m.Prefix = nil
+	c := m.Copy()
+
+	assert.EqualValues(t, m, c, "nil prefix copy failed")
 }
 
 func TestMessageString(t *testing.T) {
