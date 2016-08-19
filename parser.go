@@ -5,6 +5,123 @@ import (
 	"strings"
 )
 
+var tagDecodeSlashMap = map[rune]rune{
+	':':  ';',
+	's':  ' ',
+	'\\': '\\',
+	'r':  '\r',
+	'n':  '\n',
+}
+
+var tagEncodeMap = map[rune]string{
+	';':  "\\:",
+	' ':  "\\s",
+	'\\': "\\\\",
+	'\r': "\\r",
+	'\n': "\\n",
+}
+
+// TagValue represents the value of a tag.
+type TagValue string
+
+// ParseTagValue parses a TagValue from the connection. If you need to
+// set a TagValue, you probably want to just set the string itself, so
+// it will be encoded properly.
+func ParseTagValue(v string) TagValue {
+	ret := &bytes.Buffer{}
+
+	input := bytes.NewBufferString(v)
+
+	for {
+		c, _, err := input.ReadRune()
+		if err != nil {
+			break
+		}
+
+		if c == '\\' {
+			c2, _, err := input.ReadRune()
+			if err != nil {
+				ret.WriteRune(c)
+				break
+			}
+
+			if replacement, ok := tagDecodeSlashMap[c2]; ok {
+				ret.WriteRune(replacement)
+			} else {
+				ret.WriteRune(c)
+				ret.WriteRune(c2)
+			}
+		} else {
+			ret.WriteRune(c)
+		}
+	}
+
+	return TagValue(ret.String())
+}
+
+// Encode converts a TagValue to the format in the connection.
+func (v TagValue) Encode() string {
+	ret := &bytes.Buffer{}
+
+	for _, c := range v {
+		if replacement, ok := tagEncodeMap[c]; ok {
+			ret.WriteString(replacement)
+		} else {
+			ret.WriteRune(c)
+		}
+	}
+
+	return ret.String()
+}
+
+// Tags represents the IRCv3 message tags.
+type Tags map[string]TagValue
+
+// ParseTags takes a tag string and parses it into a tag map. It will
+// always return a tag map, even if there are no valid tags.
+func ParseTags(line string) Tags {
+	ret := Tags{}
+
+	tags := strings.Split(line, ";")
+	for _, tag := range tags {
+		parts := strings.SplitN(tag, "=", 2)
+		if len(parts) < 2 {
+			ret[parts[0]] = ""
+			continue
+		}
+
+		ret[parts[0]] = ParseTagValue(parts[1])
+	}
+
+	return ret
+}
+
+// GetTag is a convenience method to look up a tag in the map.
+func (t Tags) GetTag(key string) (string, bool) {
+	ret, ok := t[key]
+	return string(ret), ok
+}
+
+// String ensures this is stringable
+func (t Tags) String() string {
+	buf := &bytes.Buffer{}
+
+	for k, v := range t {
+		buf.WriteByte(';')
+		buf.WriteString(k)
+		if v != "" {
+			buf.WriteByte('=')
+			buf.WriteString(v.Encode())
+		}
+	}
+
+	// We don't need the first byte because that's an extra ';'
+	// character.
+	buf.ReadByte()
+
+	return buf.String()
+}
+
 // Prefix represents the prefix of a message, generally the user who sent it
 type Prefix struct {
 	// Name will contain the nick of who sent the message, the
@@ -16,18 +133,6 @@ type Prefix struct {
 
 	// Host will either contain the host of who sent the message or a blank string
 	Host string
-}
-
-// Message represents a line parsed from the server
-type Message struct {
-	// Each message can have a Prefix
-	*Prefix
-
-	// Command is which command is being called.
-	Command string
-
-	// Params are all the arguments for the command.
-	Params []string
 }
 
 // ParsePrefix takes an identity string and parses it into an
@@ -79,6 +184,21 @@ func (p *Prefix) String() string {
 	return buf.String()
 }
 
+// Message represents a line parsed from the server
+type Message struct {
+	// Each message can have IRCv3 tags
+	Tags
+
+	// Each message can have a Prefix
+	*Prefix
+
+	// Command is which command is being called.
+	Command string
+
+	// Params are all the arguments for the command.
+	Params []string
+}
+
 // ParseMessage takes a message string (usually a whole line) and
 // parses it into a Message struct. This will return nil in the case
 // of invalid messages.
@@ -89,7 +209,20 @@ func ParseMessage(line string) *Message {
 		return nil
 	}
 
-	c := &Message{Prefix: &Prefix{}}
+	c := &Message{
+		Tags:   Tags{},
+		Prefix: &Prefix{},
+	}
+
+	if line[0] == '@' {
+		split := strings.SplitN(line, " ", 2)
+		if len(split) < 2 {
+			return nil
+		}
+
+		c.Tags = ParseTags(split[0][1:])
+		line = split[1]
+	}
 
 	if line[0] == ':' {
 		split := strings.SplitN(line, " ", 2)
@@ -175,6 +308,13 @@ func (m *Message) Copy() *Message {
 // String ensures this is stringable
 func (m *Message) String() string {
 	buf := &bytes.Buffer{}
+
+	// Write any IRCv3 tags if they exist in the message
+	if len(m.Tags) > 0 {
+		buf.WriteByte('@')
+		buf.WriteString(m.Tags.String())
+		buf.WriteByte(' ')
+	}
 
 	// Add the prefix if we have one
 	if m.Prefix.Name != "" {

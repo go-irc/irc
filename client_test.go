@@ -110,6 +110,7 @@ func TestClientHandler(t *testing.T) {
 
 	assert.EqualValues(t, []*Message{
 		&Message{
+			Tags:    Tags{},
 			Prefix:  &Prefix{},
 			Command: "001",
 			Params:  []string{"hello_world"},
