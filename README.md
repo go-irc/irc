@@ -15,34 +15,45 @@ other things to build on.
 package main
 
 import (
-        "log"
-        "net"
+	"log"
+	"net"
 
-        "github.com/belak/irc"
+	"github.com/belak/irc"
 )
 
 func main() {
-        conn, err := net.Dial("tcp", "chat.freenode.net:6667")
-        if err != nil {
-                log.Fatalln(err)
-        }
+	conn, err := net.Dial("tcp", "chat.freenode.net:6667")
+	if err != nil {
+		log.Fatalln(err)
+	}
 
-        // Create the client
-        client := irc.NewClient(conn, "i_have_a_nick", "user", "name", "pass")
+	config := irc.ClientConfig{
+		Nick: "i_have_a_nick",
+		Pass: "password",
+		User: "username",
+		Name: "Full Name",
+		Handler: irc.HandlerFunc(func(c *irc.Client, m *irc.Message) {
+			if m.Command == "001" {
+				// 001 is a welcome event, so we join channels there
+				c.Write("JOIN #bot-test-chan")
+			} else if m.Command == "PRIVMSG" && m.FromChannel() {
+				// Create a handler on all messages.
+				c.WriteMessage(&irc.Message{
+					Command: "PRIVMSG",
+					Params: []string{
+						m.Params[0],
+						m.Trailing(),
+					},
+				})
+			}
+		}),
+	}
 
-        for {
-                m, err := client.ReadMessage()
-                if err != nil {
-                        log.Fatalln(err)
-                }
-
-                if m.Command == "001" {
-                        // 001 is a welcome event, so we join channels there
-                        c.Write("JOIN #bot-test-chan")
-                } else if m.Command == "PRIVMSG" {
-                        // Create a handler on all messages.
-                        c.MentionReply(e, e.Trailing())
-                }
-        }
+	// Create the client
+	client := irc.NewClient(conn, config)
+	err = client.Run()
+	if err != nil {
+		log.Fatalln(err)
+	}
 }
 ```
