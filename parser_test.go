@@ -333,7 +333,7 @@ func TestMessageCopy(t *testing.T) {
 	}
 
 	// The message itself doesn't matter, we just need to make sure we
-	// don't error if the user does something crazy and makes Params
+	// don't error if the user does something crazy and makes Prefix
 	// nil.
 	m := ParseMessage("PING :hello world")
 	m.Prefix = nil
