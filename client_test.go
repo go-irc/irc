@@ -7,20 +7,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-type TestHandler struct {
-	messages []*Message
-}
-
-func (th *TestHandler) Handle(c *Client, m *Message) {
-	th.messages = append(th.messages, m)
-}
-
-func (th *TestHandler) Messages() []*Message {
-	ret := th.messages
-	th.messages = nil
-	return ret
-}
-
 func TestClient(t *testing.T) {
 	t.Parallel()
 
@@ -83,6 +69,20 @@ func TestClient(t *testing.T) {
 	assert.Equal(t, "test_nick_", c.CurrentNick())
 }
 
+type TestHandler struct {
+	messages []*Message
+}
+
+func (th *TestHandler) Handle(c *Client, m *Message) {
+	th.messages = append(th.messages, m)
+}
+
+func (th *TestHandler) Messages() []*Message {
+	ret := th.messages
+	th.messages = nil
+	return ret
+}
+
 func TestClientHandler(t *testing.T) {
 	t.Parallel()
 
@@ -116,4 +116,67 @@ func TestClientHandler(t *testing.T) {
 			Params:  []string{"hello_world"},
 		},
 	}, handler.Messages())
+}
+
+type TestFilter struct {
+	Response bool
+}
+
+func (tf *TestFilter) Filter(c *Client, m *Message) bool {
+	return tf.Response
+}
+
+func TestClientFilter(t *testing.T) {
+	t.Parallel()
+
+	rwc := newTestReadWriteCloser()
+	config := ClientConfig{
+		Nick: "test_nick",
+		Pass: "test_pass",
+		User: "test_user",
+		Name: "test_name",
+	}
+
+	c := NewClient(rwc, config)
+	c.Write("PING :hello_world")
+	c.Writef("PING :hello_world_2")
+	c.WriteMessage(&Message{
+		Command: "PING",
+		Params:  []string{"hello_world_3"},
+	})
+
+	// With no filter, we should get all the messages
+	testLines(t, rwc, []string{
+		"PING :hello_world",
+		"PING :hello_world_2",
+		"PING hello_world_3",
+	})
+
+	// With a filter returning true, we can expect no messages
+	config.OutputFilter = &TestFilter{true}
+	c = NewClient(rwc, config)
+	c.Write("PING :hello_world")
+	c.Writef("PING :hello_world_2")
+	c.WriteMessage(&Message{
+		Command: "PING",
+		Params:  []string{"hello_world_3"},
+	})
+
+	testLines(t, rwc, []string{})
+
+	// With a filter returning false, we should get all messages
+	config.OutputFilter = &TestFilter{false}
+	c = NewClient(rwc, config)
+	c.Write("PING :hello_world")
+	c.Writef("PING :hello_world_2")
+	c.WriteMessage(&Message{
+		Command: "PING",
+		Params:  []string{"hello_world_3"},
+	})
+
+	testLines(t, rwc, []string{
+		"PING :hello_world",
+		"PING :hello_world_2",
+		"PING hello_world_3",
+	})
 }
