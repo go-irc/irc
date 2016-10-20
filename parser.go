@@ -3,6 +3,7 @@ package irc
 import (
 	"bytes"
 	"strings"
+	"unicode"
 )
 
 var tagDecodeSlashMap = map[rune]rune{
@@ -228,53 +229,60 @@ func ParseMessage(line string) *Message {
 	c := &Message{
 		Tags:   Tags{},
 		Prefix: &Prefix{},
+		Params: []string{},
 	}
 
 	if line[0] == '@' {
-		split := strings.SplitN(line, " ", 2)
-		if len(split) < 2 {
+		idx := strings.IndexRune(line, ' ')
+		if idx < 0 {
 			return nil
 		}
 
-		c.Tags = ParseTags(split[0][1:])
-		line = split[1]
+		c.Tags = ParseTags(line[1:idx])
+
+		line = strings.TrimLeftFunc(line[idx+1:], unicode.IsSpace)
 	}
 
 	if line[0] == ':' {
-		split := strings.SplitN(line, " ", 2)
-		if len(split) < 2 {
+		idx := strings.IndexRune(line, ' ')
+		if idx < 0 {
 			return nil
 		}
 
 		// Parse the identity, if there was one
-		c.Prefix = ParsePrefix(split[0][1:])
-		line = split[1]
+		c.Prefix = ParsePrefix(line[1:idx])
+
+		line = strings.TrimLeftFunc(line[idx+1:], unicode.IsSpace)
 	}
 
-	// Split out the trailing then the rest of the args. Because
-	// we expect there to be at least one result as an arg (the
-	// command) we don't need to special case the trailing arg and
-	// can just attempt a split on " :"
-	split := strings.SplitN(line, " :", 2)
-	c.Params = strings.FieldsFunc(split[0], func(r rune) bool {
-		return r == ' '
-	})
-
-	// If there are no args, we need to bail because we need at
-	// least the command.
-	if len(c.Params) == 0 {
-		return nil
+	// Grab the first argument as the command
+	idx := strings.IndexRune(line, ' ')
+	if idx < 0 {
+		c.Command = line
+		return c
 	}
 
-	// If we had a trailing arg, append it to the other args
-	if len(split) == 2 {
-		c.Params = append(c.Params, split[1])
-	}
+	c.Command = line[:idx]
+	line = strings.TrimLeftFunc(line[idx+1:], unicode.IsSpace)
 
-	// Because of how it's parsed, the Command will show up as the
-	// first arg.
-	c.Command = c.Params[0]
-	c.Params = c.Params[1:]
+	for len(line) > 0 {
+		// If the param starts with :, this is the trailing argument
+		if line[0] == ':' {
+			c.Params = append(c.Params, line[1:])
+			break
+		}
+
+		idx = strings.IndexRune(line, ' ')
+
+		// If the index wasn't found this is our last argument.
+		if idx < 0 {
+			c.Params = append(c.Params, line)
+			break
+		}
+
+		c.Params = append(c.Params, line[:idx])
+		line = strings.TrimLeftFunc(line[idx+1:], unicode.IsSpace)
+	}
 
 	return c
 }
