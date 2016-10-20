@@ -156,14 +156,14 @@ func ParsePrefix(line string) *Prefix {
 		Name: line,
 	}
 
-	uh := strings.SplitN(id.Name, "@", 2)
-	if len(uh) == 2 {
-		id.Name, id.Host = uh[0], uh[1]
+	idx := strings.IndexRune(id.Name, '@')
+	if idx > 0 {
+		id.Name, id.Host = id.Name[:idx], id.Name[idx+1:]
 	}
 
-	nu := strings.SplitN(id.Name, "!", 2)
-	if len(nu) == 2 {
-		id.Name, id.User = nu[0], nu[1]
+	idx = strings.IndexRune(id.Name, '!')
+	if idx > 0 {
+		id.Name, id.User = id.Name[:idx], id.Name[idx+1:]
 	}
 
 	return id
