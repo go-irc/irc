@@ -29,6 +29,10 @@ var messageTests = []struct {
 		IsNil: true,
 	},
 	{
+		Expect: ":asd  :",
+		IsNil:  true,
+	},
+	{
 		Expect: ":A",
 		IsNil:  true,
 	},

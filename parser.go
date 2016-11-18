@@ -232,57 +232,66 @@ func ParseMessage(line string) *Message {
 		Params: []string{},
 	}
 
-	if line[0] == '@' {
-		idx := strings.IndexRune(line, ' ')
-		if idx < 0 {
-			return nil
+	// 0 == initial
+	// 1 == found tags
+	// 2 == found prefix
+	// 3 == other
+	state := 0
+	offset := 0
+	var idxTokenEnd, idxNextToken int
+	for {
+		if state == 0 && line[offset] == '@' {
+			state = 1
+		} else if state <= 1 && line[offset] == ':' {
+			state = 2
+		} else if line[offset] == ':' {
+			c.Params = append(c.Params, line[offset+1:])
+			break
+		} else {
+			state = 3
 		}
 
-		c.Tags = ParseTags(line[1:idx])
-
-		line = strings.TrimLeftFunc(line[idx+1:], unicode.IsSpace)
-	}
-
-	if line[0] == ':' {
-		idx := strings.IndexRune(line, ' ')
-		if idx < 0 {
-			return nil
-		}
-
-		// Parse the identity, if there was one
-		c.Prefix = ParsePrefix(line[1:idx])
-
-		line = strings.TrimLeftFunc(line[idx+1:], unicode.IsSpace)
-	}
-
-	// Grab the first argument as the command
-	idx := strings.IndexRune(line, ' ')
-	if idx < 0 {
-		c.Command = line
-		return c
-	}
-
-	c.Command = line[:idx]
-	line = strings.TrimLeftFunc(line[idx+1:], unicode.IsSpace)
-
-	for len(line) > 0 {
-		// If the param starts with :, this is the trailing argument
-		if line[0] == ':' {
-			c.Params = append(c.Params, line[1:])
+		idxTokenEnd = strings.IndexFunc(line[offset:], unicode.IsSpace)
+		if idxTokenEnd < 0 {
+			c.Params = append(c.Params, line[offset:])
 			break
 		}
 
-		idx = strings.IndexRune(line, ' ')
+		idxNextToken = strings.IndexFunc(line[offset+idxTokenEnd:], isNotSpace)
+		/*
+			This should never be hit, because this only protects
+			against whitespace at the very end, and that was removed
+			by strings.TrimSpace at the start of this function.
 
-		// If the index wasn't found this is our last argument.
-		if idx < 0 {
-			c.Params = append(c.Params, line)
-			break
-		}
+			if idxNextToken < 0 {
+				c.Params = append(c.Params, line[offset:])
+				break
+			}
+		*/
 
-		c.Params = append(c.Params, line[:idx])
-		line = strings.TrimLeftFunc(line[idx+1:], unicode.IsSpace)
+		c.Params = append(c.Params, line[offset:offset+idxTokenEnd])
+
+		offset += idxTokenEnd + idxNextToken
 	}
+
+	// If the first param starts with @, we know it contains IRC tags
+	if len(c.Params) > 0 && c.Params[0][0] == '@' {
+		c.Tags = ParseTags(c.Params[0][1:])
+		c.Params = c.Params[1:]
+	}
+
+	// If the first param starts with :, we know it contains a Prefix
+	if len(c.Params) > 0 && c.Params[0][0] == ':' {
+		c.Prefix = ParsePrefix(c.Params[0][1:])
+		c.Params = c.Params[1:]
+	}
+
+	if len(c.Params) < 1 || len(c.Params[0]) < 1 {
+		return nil
+	}
+
+	c.Command = c.Params[0]
+	c.Params = c.Params[1:]
 
 	return c
 }
