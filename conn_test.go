@@ -78,7 +78,7 @@ func TestConn(t *testing.T) {
 		"PING :Hello World",
 	})
 
-	m = ParseMessage("PONG :Hello World")
+	m = MustParseMessage("PONG :Hello World")
 	rwc.server.WriteString(m.String() + "\r\n")
 	m2 := testReadMessage(t, c)
 
