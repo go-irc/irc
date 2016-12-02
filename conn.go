@@ -66,8 +66,10 @@ func (c *Conn) ReadMessage() (*Message, error) {
 	// Now that we have the message parsed, do some preprocessing on it
 	lastArg := m.Trailing()
 
-	// Clean up CTCP stuff so everyone
-	// doesn't have to parse it manually
+	// Clean up CTCP stuff so everyone doesn't have to parse it
+	// manually.
+	//
+	// TODO: This doesn't belong here. It should be in the Client.
 	if m.Command == "PRIVMSG" && len(lastArg) > 0 && lastArg[0] == '\x01' {
 		m.Command = "CTCP"
 
