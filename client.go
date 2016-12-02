@@ -5,6 +5,44 @@ import (
 	"strings"
 )
 
+// clientFilters are pre-processing which happens for certain message
+// types. These were moved from below to keep the complexity of each
+// component down.
+var clientFilters = map[string]func(*Client, *Message){
+	"001": func(c *Client, m *Message) {
+		c.currentNick = m.Params[0]
+	},
+	"433": func(c *Client, m *Message) {
+		c.currentNick = c.currentNick + "_"
+		c.Writef("NICK :%s", c.currentNick)
+	},
+	"437": func(c *Client, m *Message) {
+		c.currentNick = c.currentNick + "_"
+		c.Writef("NICK :%s", c.currentNick)
+	},
+	"PING": func(c *Client, m *Message) {
+		reply := m.Copy()
+		reply.Command = "PONG"
+		c.WriteMessage(reply)
+	},
+	"PRIVMSG": func(c *Client, m *Message) {
+		// Clean up CTCP stuff so everyone doesn't have to parse it
+		// manually.
+		lastArg := m.Trailing()
+		if len(lastArg) > 0 && lastArg[0] == '\x01' {
+			if i := strings.LastIndex(lastArg, "\x01"); i > -1 {
+				m.Command = "CTCP"
+				m.Params[len(m.Params)-1] = lastArg[1:i]
+			}
+		}
+	},
+	"NICK": func(c *Client, m *Message) {
+		if m.Prefix.Name == c.currentNick && len(m.Params) > 0 {
+			c.currentNick = m.Params[0]
+		}
+	},
+}
+
 // ClientConfig is a structure used to configure a Client.
 type ClientConfig struct {
 	// General connection information.
@@ -54,32 +92,8 @@ func (c *Client) Run() error {
 			return err
 		}
 
-		// Now that we have the message parsed, do some preprocessing on it
-		lastArg := m.Trailing()
-
-		switch m.Command {
-		case "PING":
-			reply := m.Copy()
-			reply.Command = "PONG"
-			c.WriteMessage(reply)
-		case "PRIVMSG":
-			// Clean up CTCP stuff so everyone doesn't have to parse it
-			// manually.
-			if len(lastArg) > 0 && lastArg[0] == '\x01' {
-				if i := strings.LastIndex(lastArg, "\x01"); i > -1 {
-					m.Command = "CTCP"
-					m.Params[len(m.Params)-1] = lastArg[1:i]
-				}
-			}
-		case "NICK":
-			if m.Prefix.Name == c.currentNick && len(m.Params) > 0 {
-				c.currentNick = m.Params[0]
-			}
-		case "001":
-			c.currentNick = m.Params[0]
-		case "433", "437":
-			c.currentNick = c.currentNick + "_"
-			c.Writef("NICK :%s", c.currentNick)
+		if f, ok := clientFilters[m.Command]; ok {
+			f(c, m)
 		}
 
 		if c.config.Handler != nil {
