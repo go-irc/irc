@@ -2,12 +2,31 @@ package irc
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
+
+type errorWriter struct{}
+
+func (ew *errorWriter) Write([]byte) (int, error) {
+	return 0, errors.New("errorWriter: error")
+}
+
+type readWriteCloser struct {
+	io.Reader
+	io.Writer
+	io.Closer
+}
+
+type nilCloser struct{}
+
+func (nc *nilCloser) Close() error {
+	return nil
+}
 
 type testReadWriteCloser struct {
 	client *bytes.Buffer
@@ -57,6 +76,27 @@ func testLines(t *testing.T, rwc *testReadWriteCloser, expected []string) {
 	// Reset the contents
 	rwc.client.Reset()
 	rwc.server.Reset()
+}
+
+func TestWriteMessageError(t *testing.T) {
+	t.Parallel()
+
+	rw := readWriteCloser{
+		&bytes.Buffer{},
+		&errorWriter{},
+		&nilCloser{},
+	}
+
+	c := NewConn(rw)
+
+	err := c.WriteMessage(MustParseMessage("PING :hello world"))
+	assert.Error(t, err)
+
+	err = c.Writef("PING :hello world")
+	assert.Error(t, err)
+
+	err = c.Write("PING :hello world")
+	assert.Error(t, err)
 }
 
 func TestConn(t *testing.T) {
