@@ -354,9 +354,9 @@ func (m *Message) String() string {
 			buf.WriteString(strings.Join(args, " "))
 		}
 
-		// If trailing contains a space or starts with a : we
-		// need to actually specify that it's trailing.
-		if strings.ContainsRune(trailing, ' ') || trailing[0] == ':' {
+		// If trailing is zero-length, contains a space or starts with
+		// a : we need to actually specify that it's trailing.
+		if len(trailing) == 0 || strings.ContainsRune(trailing, ' ') || trailing[0] == ':' {
 			buf.WriteString(" :")
 		} else {
 			buf.WriteString(" ")

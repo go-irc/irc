@@ -136,6 +136,12 @@ var messageTests = []struct {
 		Expect: ":A B C D\n",
 	},
 	{
+		Cmd:    "A",
+		Params: []string{""},
+
+		Expect: "A :\n",
+	},
+	{
 		Tags: Tags{
 			"tag": "value",
 		},
