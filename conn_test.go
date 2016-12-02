@@ -78,7 +78,7 @@ func TestConn(t *testing.T) {
 		"PING :Hello World",
 	})
 
-	m = ParseMessage("PONG :Hello World")
+	m = MustParseMessage("PONG :Hello World")
 	rwc.server.WriteString(m.String() + "\r\n")
 	m2 := testReadMessage(t, c)
 
@@ -94,9 +94,13 @@ func TestConn(t *testing.T) {
 	assert.Equal(t, "CTCP", m.Command, "Message was not parsed as CTCP")
 	assert.Equal(t, "VERSION", m.Trailing(), "Wrong CTCP command")
 
+	rwc.server.WriteString(":invalid_message\r\n")
+	_, err := c.ReadMessage()
+	assert.Equal(t, ErrMissingDataAfterPrefix, err)
+
 	// This is an odd one... if there wasn't any output, it'll hit
 	// EOF, so we expect an error here so we can test an error
 	// condition.
-	_, err := c.ReadMessage()
+	_, err = c.ReadMessage()
 	assert.Equal(t, io.EOF, err, "Didn't get expected EOF")
 }

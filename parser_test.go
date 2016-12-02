@@ -20,25 +20,25 @@ var messageTests = []struct {
 	// Total output
 	Expect   string
 	ExpectIn []string
-	IsNil    bool
+	Err      error
 
 	// FromChannel
 	FromChan bool
 }{
 	{
-		IsNil: true,
+		Err: ErrZeroLengthMessage,
 	},
 	{
 		Expect: ":asd  :",
-		IsNil:  true,
+		Err:    ErrMissingCommand,
 	},
 	{
 		Expect: ":A",
-		IsNil:  true,
+		Err:    ErrMissingDataAfterPrefix,
 	},
 	{
 		Expect: "@A",
-		IsNil:  true,
+		Err:    ErrMissingDataAfterTags,
 	},
 	{
 		Prefix: "server.kevlar.net",
@@ -226,13 +226,29 @@ var messageTests = []struct {
 	},
 }
 
+func TestMustParseMessage(t *testing.T) {
+	t.Parallel()
+
+	for i, test := range messageTests {
+		if test.Err != nil {
+			assert.Panics(t, func() {
+				MustParseMessage(test.Expect)
+			}, "%d. Didn't get expected panic", i)
+		} else {
+			assert.NotPanics(t, func() {
+				MustParseMessage(test.Expect)
+			}, "%d. Got unexpected panic", i)
+		}
+	}
+}
+
 func TestParseMessage(t *testing.T) {
 	t.Parallel()
 
 	for i, test := range messageTests {
-		m := ParseMessage(test.Expect)
-		if test.IsNil {
-			assert.Nil(t, m, "%d. Didn't get nil for invalid message.", i)
+		m, err := ParseMessage(test.Expect)
+		if test.Err != nil {
+			assert.Equal(t, test.Err, err, "%d. Didn't get correct error for invalid message.", i)
 		} else {
 			assert.NotNil(t, m, "%d. Got nil for valid message.", i)
 		}
@@ -280,11 +296,11 @@ func TestMessageTrailing(t *testing.T) {
 	t.Parallel()
 
 	for i, test := range messageTests {
-		if test.IsNil {
+		if test.Err != nil {
 			continue
 		}
 
-		m := ParseMessage(test.Expect)
+		m, _ := ParseMessage(test.Expect)
 		tr := m.Trailing()
 		if len(test.Params) < 1 {
 			assert.Equal(t, "", tr, "%d. Expected empty trailing", i)
@@ -298,11 +314,11 @@ func TestMessageFromChan(t *testing.T) {
 	t.Parallel()
 
 	for i, test := range messageTests {
-		if test.IsNil {
+		if test.Err != nil {
 			continue
 		}
 
-		m := ParseMessage(test.Expect)
+		m, _ := ParseMessage(test.Expect)
 		assert.Equal(t, test.FromChan, m.FromChannel(), "%d. Wrong FromChannel value", i)
 	}
 }
@@ -311,11 +327,11 @@ func TestMessageCopy(t *testing.T) {
 	t.Parallel()
 
 	for i, test := range messageTests {
-		if test.IsNil {
+		if test.Err != nil {
 			continue
 		}
 
-		m := ParseMessage(test.Expect)
+		m, _ := ParseMessage(test.Expect)
 
 		c := m.Copy()
 		assert.EqualValues(t, m, c, "%d. Copied values are not equal", i)
@@ -341,7 +357,7 @@ func TestMessageCopy(t *testing.T) {
 	// The message itself doesn't matter, we just need to make sure we
 	// don't error if the user does something crazy and makes Params
 	// nil.
-	m := ParseMessage("PING :hello world")
+	m, _ := ParseMessage("PING :hello world")
 	m.Prefix = nil
 	c := m.Copy()
 
@@ -352,11 +368,11 @@ func TestMessageString(t *testing.T) {
 	t.Parallel()
 
 	for i, test := range messageTests {
-		if test.IsNil {
+		if test.Err != nil {
 			continue
 		}
 
-		m := ParseMessage(test.Expect)
+		m, _ := ParseMessage(test.Expect)
 		if test.ExpectIn != nil {
 			assert.Contains(t, test.ExpectIn, m.String()+"\n", "%d. Message Stringification failed", i)
 		} else {
@@ -369,11 +385,11 @@ func TestMessageTags(t *testing.T) {
 	t.Parallel()
 
 	for i, test := range messageTests {
-		if test.IsNil || test.Tags == nil {
+		if test.Err != nil || test.Tags == nil {
 			continue
 		}
 
-		m := ParseMessage(test.Expect)
+		m, _ := ParseMessage(test.Expect)
 		assert.EqualValues(t, test.Tags, m.Tags, "%d. Tag parsing failed", i)
 
 		// Ensure we have all the tags we expected.

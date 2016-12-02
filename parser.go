@@ -2,6 +2,7 @@ package irc
 
 import (
 	"bytes"
+	"errors"
 	"strings"
 )
 
@@ -20,6 +21,24 @@ var tagEncodeMap = map[rune]string{
 	'\r': "\\r",
 	'\n': "\\n",
 }
+
+var (
+	// ErrZeroLengthMessage is returned when parsing if the input is
+	// zero-length.
+	ErrZeroLengthMessage = errors.New("irc: Cannot parse zero-length message")
+
+	// ErrMissingDataAfterPrefix is returned when parsing if there is
+	// no message data after the prefix.
+	ErrMissingDataAfterPrefix = errors.New("irc: No message data after prefix")
+
+	// ErrMissingDataAfterTags is returned when parsing if there is no
+	// message data after the tags.
+	ErrMissingDataAfterTags = errors.New("irc: No message data after tags")
+
+	// ErrMissingCommand is returned when parsing if there is no
+	// command in the parsed message.
+	ErrMissingCommand = errors.New("irc: Missing message command")
+)
 
 // TagValue represents the value of a tag.
 type TagValue string
@@ -215,14 +234,24 @@ type Message struct {
 	Params []string
 }
 
+// MustParseMessage calls ParseMessage and either returns the message
+// or panics if an error is returned.
+func MustParseMessage(line string) *Message {
+	m, err := ParseMessage(line)
+	if err != nil {
+		panic(err.Error())
+	}
+	return m
+}
+
 // ParseMessage takes a message string (usually a whole line) and
 // parses it into a Message struct. This will return nil in the case
 // of invalid messages.
-func ParseMessage(line string) *Message {
+func ParseMessage(line string) (*Message, error) {
 	// Trim the line and make sure we have data
 	line = strings.TrimSpace(line)
 	if len(line) == 0 {
-		return nil
+		return nil, ErrZeroLengthMessage
 	}
 
 	c := &Message{
@@ -233,7 +262,7 @@ func ParseMessage(line string) *Message {
 	if line[0] == '@' {
 		split := strings.SplitN(line, " ", 2)
 		if len(split) < 2 {
-			return nil
+			return nil, ErrMissingDataAfterTags
 		}
 
 		c.Tags = ParseTags(split[0][1:])
@@ -243,7 +272,7 @@ func ParseMessage(line string) *Message {
 	if line[0] == ':' {
 		split := strings.SplitN(line, " ", 2)
 		if len(split) < 2 {
-			return nil
+			return nil, ErrMissingDataAfterPrefix
 		}
 
 		// Parse the identity, if there was one
@@ -263,7 +292,7 @@ func ParseMessage(line string) *Message {
 	// If there are no args, we need to bail because we need at
 	// least the command.
 	if len(c.Params) == 0 {
-		return nil
+		return nil, ErrMissingCommand
 	}
 
 	// If we had a trailing arg, append it to the other args
@@ -276,7 +305,7 @@ func ParseMessage(line string) *Message {
 	c.Command = c.Params[0]
 	c.Params = c.Params[1:]
 
-	return c
+	return c, nil
 }
 
 // Trailing returns the last argument in the Message or an empty string

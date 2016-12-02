@@ -61,7 +61,10 @@ func (c *Conn) ReadMessage() (*Message, error) {
 	c.DebugCallback("read", strings.TrimRight(line, "\r\n"))
 
 	// Parse the message from our line
-	m := ParseMessage(line)
+	m, err := ParseMessage(line)
+	if err != nil {
+		return nil, err
+	}
 
 	// Now that we have the message parsed, do some preprocessing on it
 	lastArg := m.Trailing()
