@@ -22,6 +22,24 @@ var tagEncodeMap = map[rune]string{
 	'\n': "\\n",
 }
 
+var (
+	// ErrZeroLengthMessage is returned when parsing if the input is
+	// zero-length.
+	ErrZeroLengthMessage = errors.New("irc: Cannot parse zero-length message")
+
+	// ErrMissingDataAfterPrefix is returned when parsing if there is
+	// no message data after the prefix.
+	ErrMissingDataAfterPrefix = errors.New("irc: No message data after prefix")
+
+	// ErrMissingDataAfterTags is returned when parsing if there is no
+	// message data after the tags.
+	ErrMissingDataAfterTags = errors.New("irc: No message data after tags")
+
+	// ErrMissingCommand is returned when parsing if there is no
+	// command in the parsed message.
+	ErrMissingCommand = errors.New("irc: Missing message command")
+)
+
 // TagValue represents the value of a tag.
 type TagValue string
 
@@ -233,7 +251,7 @@ func ParseMessage(line string) (*Message, error) {
 	// Trim the line and make sure we have data
 	line = strings.TrimSpace(line)
 	if len(line) == 0 {
-		return nil, errors.New("Cannot parse zero-length message")
+		return nil, ErrZeroLengthMessage
 	}
 
 	c := &Message{
@@ -244,7 +262,7 @@ func ParseMessage(line string) (*Message, error) {
 	if line[0] == '@' {
 		split := strings.SplitN(line, " ", 2)
 		if len(split) < 2 {
-			return nil, errors.New("No message data after tags")
+			return nil, ErrMissingDataAfterTags
 		}
 
 		c.Tags = ParseTags(split[0][1:])
@@ -254,7 +272,7 @@ func ParseMessage(line string) (*Message, error) {
 	if line[0] == ':' {
 		split := strings.SplitN(line, " ", 2)
 		if len(split) < 2 {
-			return nil, errors.New("No message data after prefix")
+			return nil, ErrMissingDataAfterPrefix
 		}
 
 		// Parse the identity, if there was one
@@ -274,7 +292,7 @@ func ParseMessage(line string) (*Message, error) {
 	// If there are no args, we need to bail because we need at
 	// least the command.
 	if len(c.Params) == 0 {
-		return nil, errors.New("Missing message command")
+		return nil, ErrMissingCommand
 	}
 
 	// If we had a trailing arg, append it to the other args

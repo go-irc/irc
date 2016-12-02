@@ -95,8 +95,8 @@ func TestConn(t *testing.T) {
 	assert.Equal(t, "VERSION", m.Trailing(), "Wrong CTCP command")
 
 	rwc.server.WriteString(":invalid_message\r\n")
-	m, err := c.ReadMessage()
-	assert.Equal(t, "No message data after prefix", err.Error())
+	_, err := c.ReadMessage()
+	assert.Equal(t, ErrMissingDataAfterPrefix, err)
 
 	// This is an odd one... if there wasn't any output, it'll hit
 	// EOF, so we expect an error here so we can test an error

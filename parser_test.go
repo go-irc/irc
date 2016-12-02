@@ -20,25 +20,25 @@ var messageTests = []struct {
 	// Total output
 	Expect   string
 	ExpectIn []string
-	Err      string
+	Err      error
 
 	// FromChannel
 	FromChan bool
 }{
 	{
-		Err: "Cannot parse zero-length message",
+		Err: ErrZeroLengthMessage,
 	},
 	{
 		Expect: ":asd  :",
-		Err:    "Missing message command",
+		Err:    ErrMissingCommand,
 	},
 	{
 		Expect: ":A",
-		Err:    "No message data after prefix",
+		Err:    ErrMissingDataAfterPrefix,
 	},
 	{
 		Expect: "@A",
-		Err:    "No message data after tags",
+		Err:    ErrMissingDataAfterTags,
 	},
 	{
 		Prefix: "server.kevlar.net",
@@ -230,7 +230,7 @@ func TestMustParseMessage(t *testing.T) {
 	t.Parallel()
 
 	for i, test := range messageTests {
-		if test.Err != "" {
+		if test.Err != nil {
 			assert.Panics(t, func() {
 				MustParseMessage(test.Expect)
 			}, "%d. Didn't get expected panic", i)
@@ -247,8 +247,8 @@ func TestParseMessage(t *testing.T) {
 
 	for i, test := range messageTests {
 		m, err := ParseMessage(test.Expect)
-		if test.Err != "" {
-			assert.Equal(t, test.Err, err.Error(), "%d. Didn't get correct error for invalid message.", i)
+		if test.Err != nil {
+			assert.Equal(t, test.Err, err, "%d. Didn't get correct error for invalid message.", i)
 		} else {
 			assert.NotNil(t, m, "%d. Got nil for valid message.", i)
 		}
@@ -296,7 +296,7 @@ func TestMessageTrailing(t *testing.T) {
 	t.Parallel()
 
 	for i, test := range messageTests {
-		if test.Err != "" {
+		if test.Err != nil {
 			continue
 		}
 
@@ -314,7 +314,7 @@ func TestMessageFromChan(t *testing.T) {
 	t.Parallel()
 
 	for i, test := range messageTests {
-		if test.Err != "" {
+		if test.Err != nil {
 			continue
 		}
 
@@ -327,7 +327,7 @@ func TestMessageCopy(t *testing.T) {
 	t.Parallel()
 
 	for i, test := range messageTests {
-		if test.Err != "" {
+		if test.Err != nil {
 			continue
 		}
 
@@ -368,7 +368,7 @@ func TestMessageString(t *testing.T) {
 	t.Parallel()
 
 	for i, test := range messageTests {
-		if test.Err != "" {
+		if test.Err != nil {
 			continue
 		}
 
@@ -385,7 +385,7 @@ func TestMessageTags(t *testing.T) {
 	t.Parallel()
 
 	for i, test := range messageTests {
-		if test.Err != "" || test.Tags == nil {
+		if test.Err != nil || test.Tags == nil {
 			continue
 		}
 
