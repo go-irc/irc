@@ -33,22 +33,22 @@ func NewConn(rwc io.ReadWriteCloser) *Conn {
 
 // Write is a simple function which will write the given line to the
 // underlying connection.
-func (c *Conn) Write(line string) {
+func (c *Conn) Write(line string) error {
 	c.DebugCallback("write", line)
-	c.conn.Write([]byte(line))
-	c.conn.Write([]byte("\r\n"))
+	_, err := c.conn.Write([]byte(line + "\r\n"))
+	return err
 }
 
 // Writef is a wrapper around the connection's Write method and
 // fmt.Sprintf. Simply use it to send a message as you would normally
 // use fmt.Printf.
-func (c *Conn) Writef(format string, args ...interface{}) {
-	c.Write(fmt.Sprintf(format, args...))
+func (c *Conn) Writef(format string, args ...interface{}) error {
+	return c.Write(fmt.Sprintf(format, args...))
 }
 
 // WriteMessage writes the given message to the stream
-func (c *Conn) WriteMessage(m *Message) {
-	c.Write(m.String())
+func (c *Conn) WriteMessage(m *Message) error {
+	return c.Write(m.String())
 }
 
 // ReadMessage returns the next message from the stream or an error.
