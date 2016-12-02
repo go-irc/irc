@@ -1,6 +1,9 @@
 package irc
 
-import "io"
+import (
+	"io"
+	"strings"
+)
 
 // ClientConfig is a structure used to configure a Client.
 type ClientConfig struct {
@@ -51,11 +54,23 @@ func (c *Client) Run() error {
 			return err
 		}
 
+		// Now that we have the message parsed, do some preprocessing on it
+		lastArg := m.Trailing()
+
 		switch m.Command {
 		case "PING":
 			reply := m.Copy()
 			reply.Command = "PONG"
 			c.WriteMessage(reply)
+		case "PRIVMSG":
+			// Clean up CTCP stuff so everyone doesn't have to parse it
+			// manually.
+			if len(lastArg) > 0 && lastArg[0] == '\x01' {
+				if i := strings.LastIndex(lastArg, "\x01"); i > -1 {
+					m.Command = "CTCP"
+					m.Params[len(m.Params)-1] = lastArg[1:i]
+				}
+			}
 		case "NICK":
 			if m.Prefix.Name == c.currentNick && len(m.Params) > 0 {
 				c.currentNick = m.Params[0]

@@ -88,12 +88,6 @@ func TestConn(t *testing.T) {
 	rwc.server.WriteString("001 test_nick\r\n")
 	m = testReadMessage(t, c)
 
-	// Ensure CTCP messages are parsed
-	rwc.server.WriteString(":world PRIVMSG :\x01VERSION\x01\r\n")
-	m = testReadMessage(t, c)
-	assert.Equal(t, "CTCP", m.Command, "Message was not parsed as CTCP")
-	assert.Equal(t, "VERSION", m.Trailing(), "Wrong CTCP command")
-
 	rwc.server.WriteString(":invalid_message\r\n")
 	_, err := c.ReadMessage()
 	assert.Equal(t, ErrMissingDataAfterPrefix, err)

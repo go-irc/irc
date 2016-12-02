@@ -116,4 +116,17 @@ func TestClientHandler(t *testing.T) {
 			Params:  []string{"hello_world"},
 		},
 	}, handler.Messages())
+
+	// Ensure CTCP messages are parsed
+	rwc.server.WriteString(":world PRIVMSG :\x01VERSION\x01\r\n")
+	err = c.Run()
+	assert.Equal(t, io.EOF, err)
+	assert.EqualValues(t, []*Message{
+		&Message{
+			Tags:    Tags{},
+			Prefix:  &Prefix{Name: "world"},
+			Command: "CTCP",
+			Params:  []string{"VERSION"},
+		},
+	}, handler.Messages())
 }
