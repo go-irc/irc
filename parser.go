@@ -289,8 +289,12 @@ func (m *Message) Trailing() string {
 	return m.Params[len(m.Params)-1]
 }
 
-// FromChannel is mostly for PRIVMSG messages (and similar derived messages)
-// It will check if the message came from a channel or a person.
+// FromChannel is mostly for PRIVMSG messages (and similar derived
+// messages) It will check if the message came from a channel or a
+// person. This is not always accurate, because some servers allow for
+// other characters at the start of a channel.
+//
+// TODO: Remove in favor of *Client.FromChannel(*Message)
 func (m *Message) FromChannel() bool {
 	if len(m.Params) < 1 || len(m.Params[0]) < 1 {
 		return false
