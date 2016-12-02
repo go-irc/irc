@@ -61,25 +61,5 @@ func (c *Conn) ReadMessage() (*Message, error) {
 	c.DebugCallback("read", strings.TrimRight(line, "\r\n"))
 
 	// Parse the message from our line
-	m, err := ParseMessage(line)
-	if err != nil {
-		return nil, err
-	}
-
-	// Now that we have the message parsed, do some preprocessing on it
-	lastArg := m.Trailing()
-
-	// Clean up CTCP stuff so everyone doesn't have to parse it
-	// manually.
-	//
-	// TODO: This doesn't belong here. It should be in the Client.
-	if m.Command == "PRIVMSG" && len(lastArg) > 0 && lastArg[0] == '\x01' {
-		m.Command = "CTCP"
-
-		if i := strings.LastIndex(lastArg, "\x01"); i > -1 {
-			m.Params[len(m.Params)-1] = lastArg[1:i]
-		}
-	}
-
-	return m, nil
+	return ParseMessage(line)
 }

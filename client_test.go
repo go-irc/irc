@@ -81,6 +81,17 @@ func TestClient(t *testing.T) {
 		"NICK :test_nick_",
 	})
 	assert.Equal(t, "test_nick_", c.CurrentNick())
+
+	rwc.server.WriteString("437\r\n")
+	err = c.Run()
+	assert.Equal(t, io.EOF, err)
+	testLines(t, rwc, []string{
+		"PASS :test_pass",
+		"NICK :test_nick",
+		"USER test_user 0.0.0.0 0.0.0.0 :test_name",
+		"NICK :test_nick_",
+	})
+	assert.Equal(t, "test_nick_", c.CurrentNick())
 }
 
 func TestClientHandler(t *testing.T) {
@@ -114,6 +125,19 @@ func TestClientHandler(t *testing.T) {
 			Prefix:  &Prefix{},
 			Command: "001",
 			Params:  []string{"hello_world"},
+		},
+	}, handler.Messages())
+
+	// Ensure CTCP messages are parsed
+	rwc.server.WriteString(":world PRIVMSG :\x01VERSION\x01\r\n")
+	err = c.Run()
+	assert.Equal(t, io.EOF, err)
+	assert.EqualValues(t, []*Message{
+		&Message{
+			Tags:    Tags{},
+			Prefix:  &Prefix{Name: "world"},
+			Command: "CTCP",
+			Params:  []string{"VERSION"},
 		},
 	}, handler.Messages())
 }
