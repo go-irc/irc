@@ -9,6 +9,9 @@ of other libraries which provide a more full featured client if that's
 what you're looking for. This library is more of a building block for
 other things to build on.
 
+While this library aims for forwards API compatibility, there may be
+some breaking changes if something important comes up.
+
 ## Example
 
 ```go
