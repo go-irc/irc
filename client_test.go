@@ -81,6 +81,17 @@ func TestClient(t *testing.T) {
 		"NICK :test_nick_",
 	})
 	assert.Equal(t, "test_nick_", c.CurrentNick())
+
+	rwc.server.WriteString("437\r\n")
+	err = c.Run()
+	assert.Equal(t, io.EOF, err)
+	testLines(t, rwc, []string{
+		"PASS :test_pass",
+		"NICK :test_nick",
+		"USER test_user 0.0.0.0 0.0.0.0 :test_name",
+		"NICK :test_nick_",
+	})
+	assert.Equal(t, "test_nick_", c.CurrentNick())
 }
 
 func TestClientHandler(t *testing.T) {
