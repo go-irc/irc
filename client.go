@@ -66,7 +66,7 @@ type Client struct {
 }
 
 // NewClient creates a client given an io stream and a client config.
-func NewClient(rwc io.ReadWriteCloser, config ClientConfig) *Client {
+func NewClient(rwc io.ReadWriter, config ClientConfig) *Client {
 	return &Client{
 		Conn:   NewConn(rwc),
 		config: config,
