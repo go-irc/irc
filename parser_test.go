@@ -25,22 +25,22 @@ var messageTests = []struct {
 	// FromChannel
 	FromChan bool
 }{
-	{
+	{ // Empty message should error
 		Err: ErrZeroLengthMessage,
 	},
-	{
+	{ // Make sure we've got a command
 		Expect: ":asd  :",
 		Err:    ErrMissingCommand,
 	},
-	{
-		Expect: ":A",
-		Err:    ErrMissingDataAfterPrefix,
-	},
-	{
+	{ // Need data after tags
 		Expect: "@A",
 		Err:    ErrMissingDataAfterTags,
 	},
-	{
+	{ // Need data after prefix
+		Expect: ":A",
+		Err:    ErrMissingDataAfterPrefix,
+	},
+	{ // Basic prefix test
 		Prefix: "server.kevlar.net",
 		Cmd:    "PING",
 		Params: []string{},
@@ -49,7 +49,7 @@ var messageTests = []struct {
 
 		Expect: ":server.kevlar.net PING\n",
 	},
-	{
+	{ // Trailing argument test
 		Prefix: "server.kevlar.net",
 		Cmd:    "NOTICE",
 		Params: []string{"user", "*** This is a test"},
@@ -58,7 +58,7 @@ var messageTests = []struct {
 
 		Expect: ":server.kevlar.net NOTICE user :*** This is a test\n",
 	},
-	{
+	{ // Full prefix test
 		Prefix: "belakA!belakB@a.host.com",
 		Cmd:    "PRIVMSG",
 		Params: []string{"#somewhere", "*** This is a test"},
@@ -70,7 +70,7 @@ var messageTests = []struct {
 		Expect:   ":belakA!belakB@a.host.com PRIVMSG #somewhere :*** This is a test\n",
 		FromChan: true,
 	},
-	{
+	{ // Test : in the middle of a param
 		Prefix: "freenode",
 		Cmd:    "005",
 		Params: []string{"starkbot", "CHANLIMIT=#:120", "MORE", "are supported by this server"},
@@ -79,7 +79,7 @@ var messageTests = []struct {
 
 		Expect: ":freenode 005 starkbot CHANLIMIT=#:120 MORE :are supported by this server\n",
 	},
-	{
+	{ // Test FromChannel on a different channel prefix
 		Prefix: "belakA!belakB@a.host.com",
 		Cmd:    "PRIVMSG",
 		Params: []string{"&somewhere", "*** This is a test"},
@@ -91,7 +91,7 @@ var messageTests = []struct {
 		Expect:   ":belakA!belakB@a.host.com PRIVMSG &somewhere :*** This is a test\n",
 		FromChan: true,
 	},
-	{
+	{ // Test FromChannel on a single user
 		Prefix: "belakA!belakB@a.host.com",
 		Cmd:    "PRIVMSG",
 		Params: []string{"belak", "*** This is a test"},
@@ -102,16 +102,12 @@ var messageTests = []struct {
 
 		Expect: ":belakA!belakB@a.host.com PRIVMSG belak :*** This is a test\n",
 	},
-	{
-		Prefix: "A",
+	{ // Simple message
 		Cmd:    "B",
 		Params: []string{"C"},
-
-		Name: "A",
-
-		Expect: ":A B C\n",
+		Expect: "B C\n",
 	},
-	{
+	{ // Simple message with tags
 		Prefix: "A@B",
 		Cmd:    "C",
 		Params: []string{"D"},
@@ -121,12 +117,16 @@ var messageTests = []struct {
 
 		Expect: ":A@B C D\n",
 	},
-	{
+	{ // Simple message with prefix
+		Prefix: "A",
 		Cmd:    "B",
 		Params: []string{"C"},
-		Expect: "B C\n",
+
+		Name: "A",
+
+		Expect: ":A B C\n",
 	},
-	{
+	{ // Message with prefix and multiple params
 		Prefix: "A",
 		Cmd:    "B",
 		Params: []string{"C", "D"},
@@ -135,13 +135,13 @@ var messageTests = []struct {
 
 		Expect: ":A B C D\n",
 	},
-	{
+	{ // Message with empty trailing
 		Cmd:    "A",
 		Params: []string{""},
 
 		Expect: "A :\n",
 	},
-	{
+	{ // Test basic tag parsing
 		Tags: Tags{
 			"tag": "value",
 		},
@@ -151,7 +151,7 @@ var messageTests = []struct {
 
 		Expect: "@tag=value A\n",
 	},
-	{
+	{ // Escaped \n in tag
 		Tags: Tags{
 			"tag": "\n",
 		},
@@ -161,7 +161,7 @@ var messageTests = []struct {
 
 		Expect: "@tag=\\n A\n",
 	},
-	{
+	{ // Escaped \ in tag
 		Tags: Tags{
 			"tag": "\\",
 		},
@@ -172,7 +172,7 @@ var messageTests = []struct {
 		Expect:   "@tag=\\ A\n",
 		ExpectIn: []string{"@tag=\\\\ A\n"},
 	},
-	{
+	{ // Escaped ; in tag
 		Tags: Tags{
 			"tag": ";",
 		},
@@ -182,7 +182,7 @@ var messageTests = []struct {
 
 		Expect: "@tag=\\: A\n",
 	},
-	{
+	{ // Empty tag
 		Tags: Tags{
 			"tag": "",
 		},
@@ -192,7 +192,7 @@ var messageTests = []struct {
 
 		Expect: "@tag A\n",
 	},
-	{
+	{ // Escaped & in tag
 		Tags: Tags{
 			"tag": "\\&",
 		},
@@ -203,7 +203,7 @@ var messageTests = []struct {
 		Expect:   "@tag=\\& A\n",
 		ExpectIn: []string{"@tag=\\\\& A\n"},
 	},
-	{
+	{ // Multiple simple tags
 		Tags: Tags{
 			"tag":  "x",
 			"tag2": "asd",
@@ -215,7 +215,7 @@ var messageTests = []struct {
 		Expect:   "@tag=x;tag2=asd A\n",
 		ExpectIn: []string{"@tag=x;tag2=asd A\n", "@tag2=asd;tag=x A\n"},
 	},
-	{
+	{ // Complicated escaped tag
 		Tags: Tags{
 			"tag": "; \\\r\n",
 		},
