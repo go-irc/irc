@@ -224,6 +224,47 @@ var messageTests = []struct {
 		Cmd:    "A",
 		Expect: "@tag=\\:\\s\\\\\\r\\n A\n",
 	},
+	{ // Tags example from the spec
+		Tags: Tags{
+			"aaa":             "bbb",
+			"ccc":             "",
+			"example.com/ddd": "eee",
+		},
+
+		Name: "nick",
+		User: "ident",
+		Host: "host.com",
+
+		Prefix: "nick!ident@host.com",
+		Cmd:    "PRIVMSG",
+		Params: []string{"me", "Hello"},
+
+		Expect: "@aaa=bbb;ccc;example.com/ddd=eee :nick!ident@host.com PRIVMSG me :Hello\n",
+		ExpectIn: []string{
+			"@aaa=bbb;ccc;example.com/ddd=eee :nick!ident@host.com PRIVMSG me Hello\n",
+			"@aaa=bbb;example.com/ddd=eee;ccc :nick!ident@host.com PRIVMSG me Hello\n",
+			"@ccc;aaa=bbb;example.com/ddd=eee :nick!ident@host.com PRIVMSG me Hello\n",
+			"@ccc;example.com/ddd=eee;aaa=bbb :nick!ident@host.com PRIVMSG me Hello\n",
+			"@example.com/ddd=eee;aaa=bbb;ccc :nick!ident@host.com PRIVMSG me Hello\n",
+			"@example.com/ddd=eee;ccc;aaa=bbb :nick!ident@host.com PRIVMSG me Hello\n",
+		},
+	},
+	{ // = in tag
+		Tags: Tags{
+			"a": "a=a",
+		},
+
+		Name: "nick",
+		User: "ident",
+		Host: "host.com",
+
+		Prefix: "nick!ident@host.com",
+		Cmd:    "PRIVMSG",
+		Params: []string{"me", "Hello"},
+
+		Expect:   "@a=a=a :nick!ident@host.com PRIVMSG me :Hello\n",
+		ExpectIn: []string{"@a=a=a :nick!ident@host.com PRIVMSG me Hello\n"},
+	},
 }
 
 func TestMustParseMessage(t *testing.T) {
