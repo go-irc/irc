@@ -26,17 +26,26 @@ func NewConn(rw io.ReadWriter) *Conn {
 
 // Writer is the outgoing side of a connection.
 type Writer struct {
+	// DebugCallback is called for each outgoing message. The name of this may
+	// not be stable.
+	DebugCallback func(line string)
+
+	// Internal fields
 	writer io.Writer
 }
 
 // NewWriter creates an irc.Writer from an io.Writer.
 func NewWriter(w io.Writer) *Writer {
-	return &Writer{w}
+	return &Writer{nil, w}
 }
 
 // Write is a simple function which will write the given line to the
 // underlying connection.
 func (w *Writer) Write(line string) error {
+	if w.DebugCallback != nil {
+		w.DebugCallback(line)
+	}
+
 	_, err := w.writer.Write([]byte(line + "\r\n"))
 	return err
 }
@@ -57,12 +66,18 @@ func (w *Writer) WriteMessage(m *Message) error {
 // buffered, so do not re-use the io.Reader used to create the
 // irc.Reader.
 type Reader struct {
+	// DebugCallback is called for each incoming message. The name of this may
+	// not be stable.
+	DebugCallback func(string)
+
+	// Internal fields
 	reader *bufio.Reader
 }
 
 // NewReader creates an irc.Reader from an io.Reader.
 func NewReader(r io.Reader) *Reader {
 	return &Reader{
+		nil,
 		bufio.NewReader(r),
 	}
 }
@@ -72,6 +87,10 @@ func (r *Reader) ReadMessage() (*Message, error) {
 	line, err := r.reader.ReadString('\n')
 	if err != nil {
 		return nil, err
+	}
+
+	if r.DebugCallback != nil {
+		r.DebugCallback(line)
 	}
 
 	// Parse the message from our line

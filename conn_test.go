@@ -138,3 +138,29 @@ func TestConn(t *testing.T) {
 	_, err = c.ReadMessage()
 	assert.Equal(t, io.EOF, err, "Didn't get expected EOF")
 }
+
+func TestDebugCallback(t *testing.T) {
+	t.Parallel()
+
+	var readerHit, writerHit bool
+	rwc := newTestReadWriteCloser()
+	c := NewConn(rwc)
+	c.Writer.DebugCallback = func(string) {
+		writerHit = true
+	}
+	c.Reader.DebugCallback = func(string) {
+		readerHit = true
+	}
+
+	m := &Message{Prefix: &Prefix{}, Command: "PING", Params: []string{"Hello World"}}
+	c.WriteMessage(m)
+	testLines(t, rwc, []string{
+		"PING :Hello World",
+	})
+	m = MustParseMessage("PONG :Hello World")
+	rwc.server.WriteString(m.String() + "\r\n")
+	testReadMessage(t, c)
+
+	assert.True(t, readerHit)
+	assert.True(t, writerHit)
+}
