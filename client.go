@@ -29,11 +29,10 @@ var clientFilters = map[string]func(*Client, *Message){
 		// Clean up CTCP stuff so everyone doesn't have to parse it
 		// manually.
 		lastArg := m.Trailing()
-		if len(lastArg) > 0 && lastArg[0] == '\x01' {
-			if i := strings.LastIndex(lastArg, "\x01"); i > -1 {
-				m.Command = "CTCP"
-				m.Params[len(m.Params)-1] = lastArg[1:i]
-			}
+		if len(lastArg) > 1 && lastArg[0] == '\x01' &&
+			lastArg[len(lastArg)-1] == '\x01' {
+			m.Command = "CTCP"
+			m.Params[len(m.Params)-1] = strings.Trim(lastArg, "\x01")
 		}
 	},
 	"NICK": func(c *Client, m *Message) {
