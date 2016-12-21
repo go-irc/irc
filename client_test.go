@@ -140,4 +140,18 @@ func TestClientHandler(t *testing.T) {
 			Params:  []string{"VERSION"},
 		},
 	}, handler.Messages())
+
+	// CTCP Regression test for PR#47
+	// Proper CTCP should start AND end in \x01
+	rwc.server.WriteString(":world PRIVMSG :\x01VERSION\r\n")
+	err = c.Run()
+	assert.Equal(t, io.EOF, err)
+	assert.EqualValues(t, []*Message{
+		&Message{
+			Tags:    Tags{},
+			Prefix:  &Prefix{Name: "world"},
+			Command: "PRIVMSG",
+			Params:  []string{"\x01VERSION"},
+		},
+	}, handler.Messages())
 }
