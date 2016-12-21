@@ -2,7 +2,6 @@ package irc
 
 import (
 	"io"
-	"strings"
 )
 
 // clientFilters are pre-processing which happens for certain message
@@ -29,10 +28,10 @@ var clientFilters = map[string]func(*Client, *Message){
 		// Clean up CTCP stuff so everyone doesn't have to parse it
 		// manually.
 		lastArg := m.Trailing()
-		if len(lastArg) > 1 && lastArg[0] == '\x01' &&
-			lastArg[len(lastArg)-1] == '\x01' {
+		lastIdx := len(lastArg) - 1
+		if lastIdx > 0 && lastArg[0] == '\x01' && lastArg[lastIdx] == '\x01' {
 			m.Command = "CTCP"
-			m.Params[len(m.Params)-1] = strings.Trim(lastArg, "\x01")
+			m.Params[len(m.Params)-1] = lastArg[1:lastIdx]
 		}
 	},
 	"NICK": func(c *Client, m *Message) {
