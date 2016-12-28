@@ -25,7 +25,6 @@ func MaskToRegex(rawMask string) (*regexp.Regexp, error) {
 			}
 
 			buf.WriteString(regexp.QuoteMeta(unprocessed))
-			unprocessed = ""
 			break
 		}
 
