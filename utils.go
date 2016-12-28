@@ -5,6 +5,11 @@ import (
 	"regexp"
 )
 
+var maskTranslations = map[byte]string{
+	'?': ".",
+	'*': ".*",
+}
+
 // MaskToRegex converts an irc mask to a go Regexp for more convenient
 // use. This should never return an error, but we have this here just
 // in case.
@@ -20,8 +25,7 @@ func MaskToRegex(rawMask string) (*regexp.Regexp, error) {
 			break
 		}
 
-		switch c {
-		case '\\':
+		if c == '\\' {
 			c, err = input.ReadByte()
 			if err != nil {
 				output.WriteString(regexp.QuoteMeta("\\"))
@@ -33,11 +37,9 @@ func MaskToRegex(rawMask string) (*regexp.Regexp, error) {
 			} else {
 				output.WriteString(regexp.QuoteMeta("\\" + string(c)))
 			}
-		case '?':
-			output.WriteString(".")
-		case '*':
-			output.WriteString(".*")
-		default:
+		} else if trans, ok := maskTranslations[c]; ok {
+			output.WriteString(trans)
+		} else {
 			output.WriteString(regexp.QuoteMeta(string(c)))
 		}
 	}
