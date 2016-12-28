@@ -2,62 +2,47 @@ package irc
 
 import (
 	"bytes"
-	"fmt"
 	"regexp"
-	"strings"
 )
 
 // MaskToRegex converts an irc mask to a go Regexp for more convenient
 // use. This should never return an error, but we have this here just
 // in case.
 func MaskToRegex(rawMask string) (*regexp.Regexp, error) {
-	backslashed := false
-	unprocessed := rawMask
-	buf := &bytes.Buffer{}
-	buf.WriteByte('^')
+	input := bytes.NewBufferString(rawMask)
 
-	for len(unprocessed) > 0 {
-		i := strings.IndexAny(unprocessed, "\\?*")
-		if i < 0 {
-			if backslashed {
-				buf.WriteString(regexp.QuoteMeta("\\"))
-				backslashed = false
-			}
+	output := &bytes.Buffer{}
+	output.WriteByte('^')
 
-			buf.WriteString(regexp.QuoteMeta(unprocessed))
+	for {
+		c, err := input.ReadByte()
+		if err != nil {
 			break
 		}
 
-		if backslashed && i > 0 {
-			buf.WriteString(regexp.QuoteMeta("\\"))
-			backslashed = false
-		} else if backslashed && i == 0 {
-			buf.WriteString(regexp.QuoteMeta(string(unprocessed[0])))
-			unprocessed = unprocessed[1:]
-			backslashed = false
-			continue
-		}
-
-		buf.WriteString(regexp.QuoteMeta(unprocessed[:i]))
-
-		switch unprocessed[i] {
+		switch c {
 		case '\\':
-			backslashed = true
+			c, err = input.ReadByte()
+			if err != nil {
+				output.WriteString(regexp.QuoteMeta("\\"))
+				break
+			}
+
+			if c == '?' || c == '*' || c == '\\' {
+				output.WriteString(regexp.QuoteMeta(string(c)))
+			} else {
+				output.WriteString(regexp.QuoteMeta("\\" + string(c)))
+			}
 		case '?':
-			buf.WriteString(".")
+			output.WriteString(".")
 		case '*':
-			buf.WriteString(".*")
+			output.WriteString(".*")
+		default:
+			output.WriteString(regexp.QuoteMeta(string(c)))
 		}
-
-		unprocessed = unprocessed[i+1:]
-		fmt.Println(unprocessed)
 	}
 
-	if backslashed {
-		buf.WriteString(regexp.QuoteMeta("\\"))
-	}
+	output.WriteByte('$')
 
-	buf.WriteByte('$')
-
-	return regexp.Compile(buf.String())
+	return regexp.Compile(output.String())
 }
