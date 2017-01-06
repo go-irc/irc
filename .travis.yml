@@ -11,7 +11,7 @@ before_install:
   - gometalinter --install
 
 script:
-  - gometalinter --fast ./...
+  - gometalinter --fast ./... -D gas
   - go test -race -v ./...
   - go test -covermode=count -coverprofile=profile.cov
 
