@@ -22,16 +22,15 @@ functions and other additions will most likely not result in a major
 version increase unless they break the API. This library aims to
 follow the semver recommendations mentioned on gopkg.in.
 
-## Import and Branches
+## Import Paths
 
-Currently there are two main branches. `master` is where most
-development happens and will include fixes and new features the
-quickest. `v1` can be considered the stable branch. `master` will be
-frequently merged into `v1` when it is considered to be stable.
+All development happens on the `master` branch and when features are
+considered stable enough, a new release will be tagged.
 
-As a result of the two branches, there are multiple import locations.
+As a result of this, there are multiple import locations.
 
-* `gopkg.in/irc.v1` should be used to develop against the stable branch
+* `gopkg.in/irc.v1` should be used to develop against the commits
+  tagged as stable
 * `github.com/go-irc/irc` should be used to develop against the master branch
 
 ## Example
