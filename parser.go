@@ -302,7 +302,7 @@ func ParseMessage(line string) (*Message, error) {
 
 	// Because of how it's parsed, the Command will show up as the
 	// first arg.
-	c.Command = c.Params[0]
+	c.Command = strings.ToUpper(c.Params[0])
 	c.Params = c.Params[1:]
 
 	return c, nil
