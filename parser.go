@@ -249,7 +249,7 @@ func MustParseMessage(line string) *Message {
 // of invalid messages.
 func ParseMessage(line string) (*Message, error) {
 	// Trim the line and make sure we have data
-	line = strings.TrimSpace(line)
+	line = strings.TrimRight(line, "\r\n")
 	if len(line) == 0 {
 		return nil, ErrZeroLengthMessage
 	}
