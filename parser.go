@@ -59,15 +59,16 @@ func ParseTagValue(v string) TagValue {
 
 		if c == '\\' {
 			c2, _, err := input.ReadRune()
+
+			// If we got a backslash then the end of the tag value, we should
+			// just ignore the backslash.
 			if err != nil {
-				ret.WriteRune(c)
 				break
 			}
 
 			if replacement, ok := tagDecodeSlashMap[c2]; ok {
 				ret.WriteRune(replacement)
 			} else {
-				ret.WriteRune(c)
 				ret.WriteRune(c2)
 			}
 		} else {
