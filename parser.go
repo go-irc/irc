@@ -305,6 +305,12 @@ func ParseMessage(line string) (*Message, error) {
 	c.Command = strings.ToUpper(c.Params[0])
 	c.Params = c.Params[1:]
 
+	// If there are no params, set it to nil, to make writing tests and other
+	// things simpler.
+	if len(c.Params) == 0 {
+		c.Params = nil
+	}
+
 	return c, nil
 }
 
@@ -353,6 +359,11 @@ func (m *Message) Copy() *Message {
 
 	// Copy the Params slice
 	newMessage.Params = append(make([]string, 0, len(m.Params)), m.Params...)
+
+	// Similar to parsing, if Params is empty, set it to nil
+	if len(newMessage.Params) == 0 {
+		newMessage.Params = nil
+	}
 
 	return newMessage
 }

@@ -1,9 +1,14 @@
 package irc
 
 import (
+	"io/ioutil"
+	"strings"
 	"testing"
 
+	yaml "gopkg.in/yaml.v2"
+
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var messageTests = []struct {
@@ -43,7 +48,6 @@ var messageTests = []struct {
 	{ // Basic prefix test
 		Prefix: "server.kevlar.net",
 		Cmd:    "PING",
-		Params: []string{},
 
 		Name: "server.kevlar.net",
 
@@ -146,8 +150,7 @@ var messageTests = []struct {
 			"tag": "value",
 		},
 
-		Params: []string{},
-		Cmd:    "A",
+		Cmd: "A",
 
 		Expect: "@tag=value A\n",
 	},
@@ -156,8 +159,7 @@ var messageTests = []struct {
 			"tag": "\n",
 		},
 
-		Params: []string{},
-		Cmd:    "A",
+		Cmd: "A",
 
 		Expect: "@tag=\\n A\n",
 	},
@@ -166,8 +168,7 @@ var messageTests = []struct {
 			"tag": "\\",
 		},
 
-		Params: []string{},
-		Cmd:    "A",
+		Cmd: "A",
 
 		Expect:   "@tag=\\ A\n",
 		ExpectIn: []string{"@tag=\\\\ A\n"},
@@ -177,8 +178,7 @@ var messageTests = []struct {
 			"tag": ";",
 		},
 
-		Params: []string{},
-		Cmd:    "A",
+		Cmd: "A",
 
 		Expect: "@tag=\\: A\n",
 	},
@@ -187,8 +187,7 @@ var messageTests = []struct {
 			"tag": "",
 		},
 
-		Params: []string{},
-		Cmd:    "A",
+		Cmd: "A",
 
 		Expect: "@tag A\n",
 	},
@@ -197,8 +196,7 @@ var messageTests = []struct {
 			"tag": "\\&",
 		},
 
-		Params: []string{},
-		Cmd:    "A",
+		Cmd: "A",
 
 		Expect:   "@tag=\\& A\n",
 		ExpectIn: []string{"@tag=\\\\& A\n"},
@@ -209,8 +207,7 @@ var messageTests = []struct {
 			"tag2": "asd",
 		},
 
-		Params: []string{},
-		Cmd:    "A",
+		Cmd: "A",
 
 		Expect:   "@tag=x;tag2=asd A\n",
 		ExpectIn: []string{"@tag=x;tag2=asd A\n", "@tag2=asd;tag=x A\n"},
@@ -220,7 +217,6 @@ var messageTests = []struct {
 			"tag": "; \\\r\n",
 		},
 
-		Params: []string{},
 		Cmd:    "A",
 		Expect: "@tag=\\:\\s\\\\\\r\\n A\n",
 	},
@@ -441,5 +437,134 @@ func TestMessageTags(t *testing.T) {
 		}
 
 		assert.EqualValues(t, test.Tags, m.Tags, "%d. Tags don't match", i)
+	}
+}
+
+type MsgSplitTests struct {
+	Tests []struct {
+		Input string
+		Atoms struct {
+			Source *string
+			Verb   string
+			Params []string
+			Tags   map[string]interface{}
+		}
+	}
+}
+
+func TestMsgSplit(t *testing.T) {
+	data, err := ioutil.ReadFile("./testcases/tests/msg-split.yaml")
+	require.NoError(t, err)
+
+	var splitTests MsgSplitTests
+	err = yaml.Unmarshal(data, &splitTests)
+	require.NoError(t, err)
+
+	for _, test := range splitTests.Tests {
+		msg, err := ParseMessage(test.Input)
+		assert.NoError(t, err, "Failed to parse: %s (%s)", test.Input, err)
+
+		assert.Equal(t,
+			strings.ToUpper(test.Atoms.Verb), msg.Command,
+			"Wrong command for input: %s", test.Input,
+		)
+		assert.Equal(t,
+			test.Atoms.Params, msg.Params,
+			"Wrong params for input: %s", test.Input,
+		)
+
+		if test.Atoms.Source != nil {
+			assert.Equal(t, *test.Atoms.Source, msg.Prefix.String())
+		}
+
+		assert.Equal(t,
+			len(test.Atoms.Tags), len(msg.Tags),
+			"Wrong number of tags",
+		)
+
+		for k, v := range test.Atoms.Tags {
+			if v == nil {
+				assert.EqualValues(t, "", msg.Tags[k], "Tag differs")
+			} else {
+				assert.EqualValues(t, v, msg.Tags[k], "Tag differs")
+			}
+		}
+	}
+}
+
+type MsgJoinTests struct {
+	Tests []struct {
+		Atoms struct {
+			Source string
+			Verb   string
+			Params []string
+			Tags   map[string]interface{}
+		}
+		Matches []string
+	}
+}
+
+func TestMsgJoin(t *testing.T) {
+	data, err := ioutil.ReadFile("./testcases/tests/msg-join.yaml")
+	require.NoError(t, err)
+
+	var splitTests MsgJoinTests
+	err = yaml.Unmarshal(data, &splitTests)
+	require.NoError(t, err)
+
+	for _, test := range splitTests.Tests {
+		msg := &Message{
+			Prefix:  ParsePrefix(test.Atoms.Source),
+			Command: test.Atoms.Verb,
+			Params:  test.Atoms.Params,
+			Tags:    make(map[string]TagValue),
+		}
+
+		for k, v := range test.Atoms.Tags {
+			if v == nil {
+				msg.Tags[k] = TagValue("")
+			} else {
+				msg.Tags[k] = TagValue(v.(string))
+			}
+		}
+
+		assert.Contains(t, test.Matches, msg.String())
+	}
+}
+
+type UserhostSplitTests struct {
+	Tests []struct {
+		Source string
+		Atoms  struct {
+			Nick string
+			User string
+			Host string
+		}
+	}
+}
+
+func TestUserhostSplit(t *testing.T) {
+	data, err := ioutil.ReadFile("./testcases/tests/userhost-split.yaml")
+	require.NoError(t, err)
+
+	var userhostTests UserhostSplitTests
+	err = yaml.Unmarshal(data, &userhostTests)
+	require.NoError(t, err)
+
+	for _, test := range userhostTests.Tests {
+		prefix := ParsePrefix(test.Source)
+
+		assert.Equal(t,
+			test.Atoms.Nick, prefix.Name,
+			"Name did not match for input: %q", test.Source,
+		)
+		assert.Equal(t,
+			test.Atoms.User, prefix.User,
+			"User did not match for input: %q", test.Source,
+		)
+		assert.Equal(t,
+			test.Atoms.Host, prefix.Host,
+			"Host did not match for input: %q", test.Source,
+		)
 	}
 }
