@@ -105,3 +105,15 @@ func (c *Client) Run() error {
 func (c *Client) CurrentNick() string {
 	return c.currentNick
 }
+
+// FromChannel takes a Message representing a PRIVMSG and returns if that
+// message came from a channel or directly from a user.
+func (c *Client) FromChannel(m *Message) bool {
+	if len(m.Params) < 1 {
+		return false
+	}
+
+	// The first param is the target, so if this doesn't match the current nick,
+	// the message came from a channel.
+	return m.Params[0] != c.currentNick
+}
