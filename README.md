@@ -33,6 +33,11 @@ As a result of this, there are multiple import locations.
   tagged as stable
 * `github.com/go-irc/irc` should be used to develop against the master branch
 
+## Development
+
+In order to run the tests, make sure all submodules are up to date. If you are
+just using this library, these are not needed.
+
 ## Example
 
 ```go

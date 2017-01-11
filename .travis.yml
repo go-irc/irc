@@ -9,6 +9,8 @@ before_install:
   # Linting deps
   - go get github.com/alecthomas/gometalinter
   - gometalinter --install
+  # Remove the go file from the test cases dir as it fails linting
+  - rm ./testcases/*.go
 
 script:
   - gometalinter --fast ./... -D gas

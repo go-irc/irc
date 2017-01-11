@@ -59,15 +59,16 @@ func ParseTagValue(v string) TagValue {
 
 		if c == '\\' {
 			c2, _, err := input.ReadRune()
+
+			// If we got a backslash then the end of the tag value, we should
+			// just ignore the backslash.
 			if err != nil {
-				ret.WriteRune(c)
 				break
 			}
 
 			if replacement, ok := tagDecodeSlashMap[c2]; ok {
 				ret.WriteRune(replacement)
 			} else {
-				ret.WriteRune(c)
 				ret.WriteRune(c2)
 			}
 		} else {
@@ -305,6 +306,12 @@ func ParseMessage(line string) (*Message, error) {
 	c.Command = strings.ToUpper(c.Params[0])
 	c.Params = c.Params[1:]
 
+	// If there are no params, set it to nil, to make writing tests and other
+	// things simpler.
+	if len(c.Params) == 0 {
+		c.Params = nil
+	}
+
 	return c, nil
 }
 
@@ -353,6 +360,11 @@ func (m *Message) Copy() *Message {
 
 	// Copy the Params slice
 	newMessage.Params = append(make([]string, 0, len(m.Params)), m.Params...)
+
+	// Similar to parsing, if Params is empty, set it to nil
+	if len(newMessage.Params) == 0 {
+		newMessage.Params = nil
+	}
 
 	return newMessage
 }

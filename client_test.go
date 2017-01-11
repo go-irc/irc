@@ -120,7 +120,7 @@ func TestClientHandler(t *testing.T) {
 	})
 
 	assert.EqualValues(t, []*Message{
-		&Message{
+		{
 			Tags:    Tags{},
 			Prefix:  &Prefix{},
 			Command: "001",
@@ -133,7 +133,7 @@ func TestClientHandler(t *testing.T) {
 	err = c.Run()
 	assert.Equal(t, io.EOF, err)
 	assert.EqualValues(t, []*Message{
-		&Message{
+		{
 			Tags:    Tags{},
 			Prefix:  &Prefix{Name: "world"},
 			Command: "CTCP",
@@ -147,7 +147,7 @@ func TestClientHandler(t *testing.T) {
 	err = c.Run()
 	assert.Equal(t, io.EOF, err)
 	assert.EqualValues(t, []*Message{
-		&Message{
+		{
 			Tags:    Tags{},
 			Prefix:  &Prefix{Name: "world"},
 			Command: "PRIVMSG",
