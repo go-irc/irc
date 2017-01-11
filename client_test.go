@@ -154,4 +154,13 @@ func TestClientHandler(t *testing.T) {
 			Params:  []string{"\x01VERSION"},
 		},
 	}, handler.Messages())
+
+	m := MustParseMessage("PRIVMSG test_nick :hello world")
+	assert.False(t, c.FromChannel(m))
+
+	m = MustParseMessage("PRIVMSG #a_channel :hello world")
+	assert.True(t, c.FromChannel(m))
+
+	m = MustParseMessage("PING")
+	assert.False(t, c.FromChannel(m))
 }
