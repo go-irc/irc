@@ -17,13 +17,18 @@ type Conn struct {
 
 // NewConn creates a new Conn
 func NewConn(rw io.ReadWriter) *Conn {
-	// Create the client
-	c := &Conn{
+	return &Conn{
 		NewReader(rw),
 		NewWriter(rw),
 	}
+}
 
-	return c
+// NewNetConn creates a Conn with optional timeouts
+func NewNetConn(conn net.Conn, readTimeout, writeTimeout time.Duration) *Conn {
+	return &Conn{
+		NewNetReader(conn, readTimeout),
+		NewNetWriter(conn, writeTimeout),
+	}
 }
 
 // Writer is the outgoing side of a connection.

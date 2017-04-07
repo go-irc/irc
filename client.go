@@ -2,6 +2,7 @@ package irc
 
 import (
 	"io"
+	"net"
 	"sync"
 	"time"
 )
@@ -72,6 +73,15 @@ type Client struct {
 func NewClient(rwc io.ReadWriter, config ClientConfig) *Client {
 	return &Client{
 		Conn:   NewConn(rwc),
+		config: config,
+	}
+}
+
+// NewNetClient creates a client given net.Conn, optional timeouts, and
+// a client config.
+func NewNetClient(conn net.Conn, readTimeout, writeTimeout time.Duration, config ClientConfig) *Client {
+	return &Client{
+		Conn:   NewNetConn(conn, readTimeout, writeTimeout),
 		config: config,
 	}
 }
