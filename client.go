@@ -2,6 +2,8 @@ package irc
 
 import (
 	"io"
+	"sync"
+	"time"
 )
 
 // clientFilters are pre-processing which happens for certain message
@@ -49,6 +51,9 @@ type ClientConfig struct {
 	User string
 	Name string
 
+	// Connection settings
+	PingFrequency time.Duration
+
 	// Handler is used for message dispatching.
 	Handler Handler
 }
@@ -75,6 +80,31 @@ func NewClient(rwc io.ReadWriter, config ClientConfig) *Client {
 // strange and unexpected ways if it is called again before the first connection
 // exits.
 func (c *Client) Run() error {
+	// exiting is used by the main goroutine here to ensure any sub-goroutines
+	// get closed when exiting.
+	exiting := make(chan struct{})
+	var wg sync.WaitGroup
+
+	// If PingFrequency isn't the zero value, we need to start a ping goroutine.
+	if c.config.PingFrequency > 0 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			t := time.NewTicker(c.config.PingFrequency)
+			defer t.Stop()
+
+			for {
+				select {
+				case <-t.C:
+					c.Writef("PING :%d", time.Now().Unix())
+				case <-exiting:
+					break
+				}
+			}
+		}()
+	}
+
 	c.currentNick = c.config.Nick
 
 	if c.config.Pass != "" {
@@ -84,10 +114,12 @@ func (c *Client) Run() error {
 	c.Writef("NICK :%s", c.config.Nick)
 	c.Writef("USER %s 0.0.0.0 0.0.0.0 :%s", c.config.User, c.config.Name)
 
+	var err error
+	var m *Message
 	for {
-		m, err := c.ReadMessage()
+		m, err = c.ReadMessage()
 		if err != nil {
-			return err
+			break
 		}
 
 		if f, ok := clientFilters[m.Command]; ok {
@@ -98,6 +130,11 @@ func (c *Client) Run() error {
 			c.config.Handler.Handle(c, m)
 		}
 	}
+
+	close(exiting)
+	wg.Wait()
+
+	return err
 }
 
 // CurrentNick returns what the nick of the client is known to be at this point
