@@ -2,7 +2,6 @@ package irc
 
 import (
 	"io"
-	"net"
 	"sync"
 	"time"
 )
@@ -54,6 +53,8 @@ type ClientConfig struct {
 
 	// Connection settings
 	PingFrequency time.Duration
+	ReadTimeout   time.Duration
+	WriteTimeout  time.Duration
 
 	// Handler is used for message dispatching.
 	Handler Handler
@@ -71,19 +72,13 @@ type Client struct {
 
 // NewClient creates a client given an io stream and a client config.
 func NewClient(rwc io.ReadWriter, config ClientConfig) *Client {
-	return &Client{
+	c := &Client{
 		Conn:   NewConn(rwc),
 		config: config,
 	}
-}
-
-// NewNetClient creates a client given net.Conn, optional timeouts, and
-// a client config.
-func NewNetClient(conn net.Conn, readTimeout, writeTimeout time.Duration, config ClientConfig) *Client {
-	return &Client{
-		Conn:   NewNetConn(conn, readTimeout, writeTimeout),
-		config: config,
-	}
+	c.Reader.SetTimeout(config.ReadTimeout)
+	c.Writer.SetTimeout(config.WriteTimeout)
+	return c
 }
 
 // Run starts the main loop for this IRC connection. Note that it may break in

@@ -23,14 +23,6 @@ func NewConn(rw io.ReadWriter) *Conn {
 	}
 }
 
-// NewNetConn creates a Conn with optional timeouts
-func NewNetConn(conn net.Conn, readTimeout, writeTimeout time.Duration) *Conn {
-	return &Conn{
-		NewNetReader(conn, readTimeout),
-		NewNetWriter(conn, writeTimeout),
-	}
-}
-
 // Writer is the outgoing side of a connection.
 type Writer struct {
 	// DebugCallback is called for each outgoing message. The name of this may
@@ -39,22 +31,19 @@ type Writer struct {
 
 	// Internal fields
 	writer  io.Writer
-	conn    net.Conn
 	timeout time.Duration
 }
 
 // NewWriter creates an irc.Writer from an io.Writer.
 func NewWriter(w io.Writer) *Writer {
-	return &Writer{nil, w, nil, 0}
+	return &Writer{nil, w, 0}
 }
 
-// NewNetWriter creates an irc.Writer from a net.Conn and a write timeout.
-// Note that the read timeout is not for stream activity but how long waiting
-// for a message. These should be almost identical in most situations.
-func NewNetWriter(conn net.Conn, timeout time.Duration) *Writer {
-	return &Writer{
-		nil, conn, conn, timeout,
-	}
+// SetTimeout allows you to set the write timeout for the next call to Write.
+// Note that it is undefined behavior to call this while a call to Write is
+// happening.
+func (w *Writer) SetTimeout(timeout time.Duration) {
+	w.timeout = timeout
 }
 
 // Write is a simple function which will write the given line to the
@@ -64,8 +53,8 @@ func (w *Writer) Write(line string) error {
 		w.DebugCallback(line)
 	}
 
-	if w.conn != nil && w.timeout > 0 {
-		err := w.conn.SetWriteDeadline(time.Now().Add(w.timeout))
+	if c, ok := w.writer.(net.Conn); ok && w.timeout > 0 {
+		err := c.SetWriteDeadline(time.Now().Add(w.timeout))
 		if err != nil {
 			return err
 		}
@@ -96,38 +85,36 @@ type Reader struct {
 	DebugCallback func(string)
 
 	// Internal fields
-	reader  *bufio.Reader
-	conn    net.Conn
-	timeout time.Duration
+	rawReader io.Reader
+	reader    *bufio.Reader
+	timeout   time.Duration
 }
 
-// NewReader creates an irc.Reader from an io.Reader.
+// NewReader creates an irc.Reader from an io.Reader. Note that once a reader is
+// passed into this function, you should no longer use it as it is being used
+// inside a bufio.Reader so you cannot rely on only the amount of data for a
+// Message being read when you call ReadMessage.
 func NewReader(r io.Reader) *Reader {
 	return &Reader{
 		nil,
+		r,
 		bufio.NewReader(r),
-		nil,
 		0,
 	}
 }
 
-// NewNetReader creates an irc.Reader from a net.Conn and a read timeout. Note
-// that the read timeout is not for stream activity but how long waiting for a
-// message. These should be almost identical in most situations.
-func NewNetReader(c net.Conn, timeout time.Duration) *Reader {
-	return &Reader{
-		nil,
-		bufio.NewReader(c),
-		c,
-		timeout,
-	}
+// SetTimeout allows you to set the read timeout for the next call to
+// ReadMessage. Note that it is undefined behavior to call this while
+// a call to ReadMessage is happening.
+func (r *Reader) SetTimeout(timeout time.Duration) {
+	r.timeout = timeout
 }
 
 // ReadMessage returns the next message from the stream or an error.
 func (r *Reader) ReadMessage() (*Message, error) {
 	// Set the read deadline if we have one
-	if r.conn != nil && r.timeout > 0 {
-		err := r.conn.SetReadDeadline(time.Now().Add(r.timeout))
+	if c, ok := r.rawReader.(net.Conn); ok && r.timeout > 0 {
+		err := c.SetReadDeadline(time.Now().Add(r.timeout))
 		if err != nil {
 			return nil, err
 		}
