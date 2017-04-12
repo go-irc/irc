@@ -4,8 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"net"
-	"time"
 )
 
 // Conn represents a simple IRC client. It embeds an irc.Reader and an
@@ -30,21 +28,12 @@ type Writer struct {
 	DebugCallback func(line string)
 
 	// Internal fields
-	writer  io.Writer
-	timeout time.Duration
+	writer io.Writer
 }
 
 // NewWriter creates an irc.Writer from an io.Writer.
 func NewWriter(w io.Writer) *Writer {
-	return &Writer{nil, w, 0}
-}
-
-// SetTimeout allows you to set the write timeout for the next call to Write.
-// Note that it is undefined behavior to call this while a call to Write is
-// happening. Additionally, this is only effective if a net.Conn was passed into
-// NewWriter.
-func (w *Writer) SetTimeout(timeout time.Duration) {
-	w.timeout = timeout
+	return &Writer{nil, w}
 }
 
 // Write is a simple function which will write the given line to the
@@ -52,13 +41,6 @@ func (w *Writer) SetTimeout(timeout time.Duration) {
 func (w *Writer) Write(line string) error {
 	if w.DebugCallback != nil {
 		w.DebugCallback(line)
-	}
-
-	if c, ok := w.writer.(net.Conn); ok && w.timeout > 0 {
-		err := c.SetWriteDeadline(time.Now().Add(w.timeout))
-		if err != nil {
-			return err
-		}
 	}
 
 	_, err := w.writer.Write([]byte(line + "\r\n"))
@@ -86,9 +68,7 @@ type Reader struct {
 	DebugCallback func(string)
 
 	// Internal fields
-	rawReader io.Reader
-	reader    *bufio.Reader
-	timeout   time.Duration
+	reader *bufio.Reader
 }
 
 // NewReader creates an irc.Reader from an io.Reader. Note that once a reader is
@@ -98,30 +78,12 @@ type Reader struct {
 func NewReader(r io.Reader) *Reader {
 	return &Reader{
 		nil,
-		r,
 		bufio.NewReader(r),
-		0,
 	}
-}
-
-// SetTimeout allows you to set the read timeout for the next call to
-// ReadMessage. Note that it is undefined behavior to call this while
-// a call to ReadMessage is happening. Additionally, this is only
-// effective if a net.Conn is passed into NewReader.
-func (r *Reader) SetTimeout(timeout time.Duration) {
-	r.timeout = timeout
 }
 
 // ReadMessage returns the next message from the stream or an error.
 func (r *Reader) ReadMessage() (*Message, error) {
-	// Set the read deadline if we have one
-	if c, ok := r.rawReader.(net.Conn); ok && r.timeout > 0 {
-		err := c.SetReadDeadline(time.Now().Add(r.timeout))
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	line, err := r.reader.ReadString('\n')
 	if err != nil {
 		return nil, err

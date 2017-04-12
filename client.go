@@ -1,6 +1,8 @@
 package irc
 
 import (
+	"errors"
+	"fmt"
 	"io"
 	"sync"
 	"time"
@@ -25,6 +27,22 @@ var clientFilters = map[string]func(*Client, *Message){
 		reply := m.Copy()
 		reply.Command = "PONG"
 		c.WriteMessage(reply)
+	},
+	"PONG": func(c *Client, m *Message) {
+		if c.config.PingFrequency > 0 {
+			c.sentPingLock.Lock()
+			defer c.sentPingLock.Unlock()
+
+			// If there haven't been any sent pings, so we can safely ignore
+			// this pong.
+			if len(c.sentPings) == 0 {
+				return
+			}
+
+			if fmt.Sprintf("%d", c.sentPings[0].Unix()) == m.Trailing() {
+				c.sentPings = c.sentPings[1:]
+			}
+		}
 	},
 	"PRIVMSG": func(c *Client, m *Message) {
 		// Clean up CTCP stuff so everyone doesn't have to parse it
@@ -53,8 +71,7 @@ type ClientConfig struct {
 
 	// Connection settings
 	PingFrequency time.Duration
-	ReadTimeout   time.Duration
-	WriteTimeout  time.Duration
+	PingTimeout   time.Duration
 
 	// Handler is used for message dispatching.
 	Handler Handler
@@ -64,21 +81,89 @@ type ClientConfig struct {
 // much simpler.
 type Client struct {
 	*Conn
+	rwc    io.ReadWriteCloser
 	config ClientConfig
 
 	// Internal state
-	currentNick string
+	currentNick  string
+	sentPingLock sync.Mutex
+	sentPings    []time.Time
 }
 
 // NewClient creates a client given an io stream and a client config.
-func NewClient(rwc io.ReadWriter, config ClientConfig) *Client {
-	c := &Client{
+func NewClient(rwc io.ReadWriteCloser, config ClientConfig) *Client {
+	return &Client{
 		Conn:   NewConn(rwc),
+		rwc:    rwc,
 		config: config,
 	}
-	c.Reader.SetTimeout(config.ReadTimeout)
-	c.Writer.SetTimeout(config.WriteTimeout)
-	return c
+}
+
+func (c *Client) startPingLoop(wg *sync.WaitGroup, errChan chan error, exiting chan struct{}) {
+	// We're firing off two new goroutines here.
+	wg.Add(2)
+
+	// PING ticker
+	go func() {
+		defer wg.Done()
+
+		t := time.NewTicker(c.config.PingFrequency)
+		defer t.Stop()
+
+		for {
+			select {
+			case <-t.C:
+				timestamp := time.Now()
+
+				// We need to append before we write so we can guarantee
+				// this will be in the queue when the PONG gets here.
+				c.sentPingLock.Lock()
+				c.sentPings = append(c.sentPings, timestamp)
+				c.sentPingLock.Unlock()
+
+				err := c.Writef("PING :%d", timestamp.Unix())
+				if err != nil {
+					errChan <- err
+					c.rwc.Close()
+					return
+				}
+			case <-exiting:
+				return
+			}
+		}
+	}()
+
+	// PONG checker
+	go func() {
+		defer wg.Done()
+
+		var timer *time.Timer
+		var pingSent bool
+
+		for {
+			c.sentPingLock.Lock()
+			pingSent = len(c.sentPings) > 0
+			if pingSent {
+				timer = time.NewTimer(c.config.PingTimeout)
+			} else {
+				timer = time.NewTimer(c.config.PingFrequency)
+			}
+			c.sentPingLock.Unlock()
+
+			select {
+			case <-timer.C:
+				if pingSent {
+					errChan <- errors.New("PING timeout")
+					c.rwc.Close()
+					return
+				}
+			case <-exiting:
+				return
+			}
+
+			timer.Stop()
+		}
+	}()
 }
 
 // Run starts the main loop for this IRC connection. Note that it may break in
@@ -88,26 +173,13 @@ func (c *Client) Run() error {
 	// exiting is used by the main goroutine here to ensure any sub-goroutines
 	// get closed when exiting.
 	exiting := make(chan struct{})
+	errChan := make(chan error, 3)
 	var wg sync.WaitGroup
 
-	// If PingFrequency isn't the zero value, we need to start a ping goroutine.
+	// If PingFrequency isn't the zero value, we need to start a ping goroutine
+	// and a pong checker goroutine.
 	if c.config.PingFrequency > 0 {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-
-			t := time.NewTicker(c.config.PingFrequency)
-			defer t.Stop()
-
-			for {
-				select {
-				case <-t.C:
-					c.Writef("PING :%d", time.Now().Unix())
-				case <-exiting:
-					break
-				}
-			}
-		}()
+		c.startPingLoop(&wg, errChan, exiting)
 	}
 
 	c.currentNick = c.config.Nick
@@ -119,11 +191,10 @@ func (c *Client) Run() error {
 	c.Writef("NICK :%s", c.config.Nick)
 	c.Writef("USER %s 0.0.0.0 0.0.0.0 :%s", c.config.User, c.config.Name)
 
-	var err error
-	var m *Message
 	for {
-		m, err = c.ReadMessage()
+		m, err := c.ReadMessage()
 		if err != nil {
+			errChan <- err
 			break
 		}
 
@@ -136,6 +207,9 @@ func (c *Client) Run() error {
 		}
 	}
 
+	// Wait for an error from any goroutine, then signal we're exiting and wait
+	// for the goroutines to exit.
+	err := <-errChan
 	close(exiting)
 	wg.Wait()
 
