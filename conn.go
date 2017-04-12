@@ -41,7 +41,8 @@ func NewWriter(w io.Writer) *Writer {
 
 // SetTimeout allows you to set the write timeout for the next call to Write.
 // Note that it is undefined behavior to call this while a call to Write is
-// happening.
+// happening. Additionally, this is only effective if a net.Conn was passed into
+// NewWriter.
 func (w *Writer) SetTimeout(timeout time.Duration) {
 	w.timeout = timeout
 }
@@ -105,7 +106,8 @@ func NewReader(r io.Reader) *Reader {
 
 // SetTimeout allows you to set the read timeout for the next call to
 // ReadMessage. Note that it is undefined behavior to call this while
-// a call to ReadMessage is happening.
+// a call to ReadMessage is happening. Additionally, this is only
+// effective if a net.Conn is passed into NewReader.
 func (r *Reader) SetTimeout(timeout time.Duration) {
 	r.timeout = timeout
 }
