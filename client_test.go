@@ -10,10 +10,14 @@ import (
 
 type TestHandler struct {
 	messages []*Message
+	delay    time.Duration
 }
 
 func (th *TestHandler) Handle(c *Client, m *Message) {
 	th.messages = append(th.messages, m)
+	if th.delay > 0 {
+		time.Sleep(th.delay)
+	}
 }
 
 func (th *TestHandler) Messages() []*Message {
@@ -108,7 +112,7 @@ func TestSendLimit(t *testing.T) {
 
 		Handler: handler,
 
-		SendLimit: time.Second / 4,
+		SendLimit: 10 * time.Millisecond,
 		SendBurst: 2,
 	}
 
@@ -118,18 +122,29 @@ func TestSendLimit(t *testing.T) {
 	before := time.Now()
 	err := c.Run()
 	assert.Equal(t, io.EOF, err)
-	assert.WithinDuration(t, before, time.Now(), 2*time.Second)
+	assert.WithinDuration(t, before, time.Now(), 50*time.Millisecond)
 	testLines(t, rwc, []string{
 		"PASS :test_pass",
 		"NICK :test_nick",
 		"USER test_user 0.0.0.0 0.0.0.0 :test_name",
 	})
 
-	rwc.server.WriteString("PING :hello world\r\n")
-	rwc.server.WriteString("PING :hello world\r\n")
-	rwc.server.WriteString("PING :hello world\r\n")
-	rwc.server.WriteString("PING :hello world\r\n")
-	rwc.server.WriteString("PING :hello world\r\n")
+	// This last test isn't really a test. It's being used to make sure we
+	// hit the branch which handles dropping ticks if the buffered channel is
+	// full.
+	rwc.server.WriteString("001 :hello world\r\n")
+	handler.delay = 20 * time.Millisecond // Sleep for 20ms when we get the 001 message
+	c.config.SendLimit = 10 * time.Millisecond
+	c.config.SendBurst = 0
+	before = time.Now()
+	err = c.Run()
+	assert.Equal(t, io.EOF, err)
+	assert.WithinDuration(t, before, time.Now(), 60*time.Millisecond)
+	testLines(t, rwc, []string{
+		"PASS :test_pass",
+		"NICK :test_nick",
+		"USER test_user 0.0.0.0 0.0.0.0 :test_name",
+	})
 }
 
 func TestClientHandler(t *testing.T) {
