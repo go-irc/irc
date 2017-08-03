@@ -3,6 +3,7 @@ package irc
 import (
 	"io"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -92,6 +93,43 @@ func TestClient(t *testing.T) {
 		"NICK :test_nick_",
 	})
 	assert.Equal(t, "test_nick_", c.CurrentNick())
+}
+
+func TestSendLimit(t *testing.T) {
+	t.Parallel()
+
+	handler := &TestHandler{}
+	rwc := newTestReadWriteCloser()
+	config := ClientConfig{
+		Nick: "test_nick",
+		Pass: "test_pass",
+		User: "test_user",
+		Name: "test_name",
+
+		Handler: handler,
+
+		SendLimit: time.Second / 4,
+		SendBurst: 2,
+	}
+
+	rwc.server.WriteString("001 :hello_world\r\n")
+	c := NewClient(rwc, config)
+
+	before := time.Now()
+	err := c.Run()
+	assert.Equal(t, io.EOF, err)
+	assert.WithinDuration(t, before, time.Now(), 2*time.Second)
+	testLines(t, rwc, []string{
+		"PASS :test_pass",
+		"NICK :test_nick",
+		"USER test_user 0.0.0.0 0.0.0.0 :test_name",
+	})
+
+	rwc.server.WriteString("PING :hello world\r\n")
+	rwc.server.WriteString("PING :hello world\r\n")
+	rwc.server.WriteString("PING :hello world\r\n")
+	rwc.server.WriteString("PING :hello world\r\n")
+	rwc.server.WriteString("PING :hello world\r\n")
 }
 
 func TestClientHandler(t *testing.T) {

@@ -71,13 +71,15 @@ type Client struct {
 	currentNick string
 	limitTick   *time.Ticker
 	limiter     chan struct{}
+	tickDone    chan struct{}
 }
 
 // NewClient creates a client given an io stream and a client config.
 func NewClient(rwc io.ReadWriter, config ClientConfig) *Client {
 	c := &Client{
-		Conn:   NewConn(rwc),
-		config: config,
+		Conn:     NewConn(rwc),
+		config:   config,
+		tickDone: make(chan struct{}),
 	}
 
 	// Replace the writer writeCallback with one of our own
@@ -106,14 +108,23 @@ func (c *Client) maybeStartLimiter() {
 	c.limitTick = time.NewTicker(c.config.SendLimit)
 
 	go func() {
-		for range c.limitTick.C {
+		var done bool
+		for !done {
 			select {
-			case c.limiter <- struct{}{}:
-			default:
+			case <-c.limitTick.C:
+				select {
+				case c.limiter <- struct{}{}:
+				default:
+				}
+			case <-c.tickDone:
+				done = true
 			}
 		}
+
+		c.limitTick.Stop()
 		close(c.limiter)
 		c.limiter = nil
+		c.tickDone <- struct{}{}
 	}()
 }
 
@@ -122,7 +133,8 @@ func (c *Client) stopLimiter() {
 		return
 	}
 
-	c.limitTick.Stop()
+	c.tickDone <- struct{}{}
+	<-c.tickDone
 }
 
 // Run starts the main loop for this IRC connection. Note that it may break in
