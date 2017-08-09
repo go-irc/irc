@@ -11,9 +11,6 @@ import (
 type Conn struct {
 	*Reader
 	*Writer
-
-	// Internal fields
-	closer io.Closer
 }
 
 // NewConn creates a new Conn
@@ -22,12 +19,6 @@ func NewConn(rw io.ReadWriter) *Conn {
 	c := &Conn{
 		NewReader(rw),
 		NewWriter(rw),
-		nil,
-	}
-
-	// If there's a closer available, we want to keep it around
-	if closer, ok := rw.(io.Closer); ok {
-		c.closer = closer
 	}
 
 	return c
