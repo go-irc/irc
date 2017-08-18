@@ -30,7 +30,10 @@ var clientFilters = map[string]func(*Client, *Message){
 	},
 	"PONG": func(c *Client, m *Message) {
 		if c.incomingPongChan != nil {
-			c.incomingPongChan <- m.Trailing()
+			select {
+			case c.incomingPongChan <- m.Trailing():
+			default:
+			}
 		}
 	},
 	"PRIVMSG": func(c *Client, m *Message) {
