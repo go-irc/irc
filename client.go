@@ -81,18 +81,15 @@ type Client struct {
 
 	// Internal state
 	currentNick      string
-	limitTick        *time.Ticker
 	limiter          chan struct{}
-	tickDone         chan struct{}
 	incomingPongChan chan string
 }
 
 // NewClient creates a client given an io stream and a client config.
 func NewClient(rw io.ReadWriter, config ClientConfig) *Client {
 	c := &Client{
-		Conn:     NewConn(rw),
-		config:   config,
-		tickDone: make(chan struct{}),
+		Conn:   NewConn(rw),
+		config: config,
 	}
 
 	// Replace the writer writeCallback with one of our own
@@ -119,7 +116,7 @@ func (c *Client) maybeStartLimiter(wg *sync.WaitGroup, errChan chan error, exiti
 
 	// If SendBurst is 0, this will be unbuffered, so keep that in mind.
 	c.limiter = make(chan struct{}, c.config.SendBurst)
-	c.limitTick = time.NewTicker(c.config.SendLimit)
+	limitTick := time.NewTicker(c.config.SendLimit)
 
 	go func() {
 		defer wg.Done()
@@ -127,7 +124,7 @@ func (c *Client) maybeStartLimiter(wg *sync.WaitGroup, errChan chan error, exiti
 		var done bool
 		for !done {
 			select {
-			case <-c.limitTick.C:
+			case <-limitTick.C:
 				select {
 				case c.limiter <- struct{}{}:
 				default:
@@ -137,7 +134,7 @@ func (c *Client) maybeStartLimiter(wg *sync.WaitGroup, errChan chan error, exiti
 			}
 		}
 
-		c.limitTick.Stop()
+		limitTick.Stop()
 		close(c.limiter)
 		c.limiter = nil
 	}()
