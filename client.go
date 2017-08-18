@@ -147,6 +147,8 @@ func (c *Client) maybeStartPingLoop(wg *sync.WaitGroup, errChan chan error, exit
 
 	wg.Add(1)
 
+	c.incomingPongChan = make(chan string, 5)
+
 	// PONG checker
 	go func() {
 		defer wg.Done()
