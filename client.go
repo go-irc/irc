@@ -146,53 +146,52 @@ func (c *Client) maybeStartPingLoop(wg *sync.WaitGroup, errChan chan error, exit
 	}
 
 	wg.Add(1)
-
 	c.incomingPongChan = make(chan string, 5)
+	go c.pingLoop(wg, errChan, exiting)
+}
 
-	// PONG checker
-	go func() {
-		defer wg.Done()
+func (c *Client) pingLoop(wg *sync.WaitGroup, errChan chan error, exiting chan struct{}) {
+	defer wg.Done()
 
-		var (
-			sentPings       []time.Time
-			pingTimeoutChan <-chan time.Time
-			ticker          = time.NewTicker(c.config.PingFrequency)
-		)
+	var (
+		sentPings       []time.Time
+		pingTimeoutChan <-chan time.Time
+		ticker          = time.NewTicker(c.config.PingFrequency)
+	)
 
-		defer ticker.Stop()
+	defer ticker.Stop()
 
-		for {
-			// Reset the pingTimeoutChan if we have any pings we're waiting for
-			// and it isn't currently set.
-			if len(sentPings) > 0 && pingTimeoutChan == nil {
-				pingTimeoutChan = time.After(time.Now().Sub(sentPings[0]) + c.config.PingTimeout)
-			}
-
-			select {
-			case <-ticker.C:
-				timestamp := time.Now()
-				err := c.Writef("PING :%d", timestamp.Unix())
-				if err != nil {
-					errChan <- err
-					return
-				}
-				sentPings = append(sentPings, timestamp)
-			case <-pingTimeoutChan:
-				errChan <- errors.New("PING timeout")
-				return
-			case data := <-c.incomingPongChan:
-				if len(sentPings) == 0 || data != fmt.Sprintf("%d", sentPings[0].Unix()) {
-					continue
-				}
-
-				// Drop the first ping and clear the timeout chan
-				sentPings = sentPings[1:]
-				pingTimeoutChan = nil
-			case <-exiting:
-				return
-			}
+	for {
+		// Reset the pingTimeoutChan if we have any pings we're waiting for
+		// and it isn't currently set.
+		if len(sentPings) > 0 && pingTimeoutChan == nil {
+			pingTimeoutChan = time.After(time.Now().Sub(sentPings[0]) + c.config.PingTimeout)
 		}
-	}()
+
+		select {
+		case <-ticker.C:
+			timestamp := time.Now()
+			err := c.Writef("PING :%d", timestamp.Unix())
+			if err != nil {
+				errChan <- err
+				return
+			}
+			sentPings = append(sentPings, timestamp)
+		case <-pingTimeoutChan:
+			errChan <- errors.New("PING timeout")
+			return
+		case data := <-c.incomingPongChan:
+			if len(sentPings) == 0 || data != fmt.Sprintf("%d", sentPings[0].Unix()) {
+				continue
+			}
+
+			// Drop the first ping and clear the timeout chan
+			sentPings = sentPings[1:]
+			pingTimeoutChan = nil
+		case <-exiting:
+			return
+		}
+	}
 }
 
 // Run starts the main loop for this IRC connection. Note that it may break in
