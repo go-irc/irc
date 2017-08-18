@@ -29,19 +29,8 @@ var clientFilters = map[string]func(*Client, *Message){
 		c.WriteMessage(reply)
 	},
 	"PONG": func(c *Client, m *Message) {
-		if c.config.PingFrequency > 0 {
-			c.sentPingLock.Lock()
-			defer c.sentPingLock.Unlock()
-
-			// If there haven't been any sent pings, so we can safely ignore
-			// this pong.
-			if len(c.sentPings) == 0 {
-				return
-			}
-
-			if fmt.Sprintf("%d", c.sentPings[0].Unix()) == m.Trailing() {
-				c.sentPings = c.sentPings[1:]
-			}
+		if c.incomingPongChan != nil {
+			c.incomingPongChan <- m.Trailing()
 		}
 	},
 	"PRIVMSG": func(c *Client, m *Message) {
@@ -88,24 +77,20 @@ type ClientConfig struct {
 // much simpler.
 type Client struct {
 	*Conn
-	rwc    io.ReadWriteCloser
 	config ClientConfig
 
 	// Internal state
-	currentNick  string
-	sentPingLock sync.Mutex
-	sentPings    []time.Time
-
-	limitTick *time.Ticker
-	limiter   chan struct{}
-	tickDone  chan struct{}
+	currentNick      string
+	limitTick        *time.Ticker
+	limiter          chan struct{}
+	tickDone         chan struct{}
+	incomingPongChan chan string
 }
 
 // NewClient creates a client given an io stream and a client config.
-func NewClient(rwc io.ReadWriteCloser, config ClientConfig) *Client {
+func NewClient(rw io.ReadWriter, config ClientConfig) *Client {
 	c := &Client{
-		Conn:     NewConn(rwc),
-		rwc:      rwc,
+		Conn:     NewConn(rw),
 		config:   config,
 		tickDone: make(chan struct{}),
 	}
@@ -155,82 +140,58 @@ func (c *Client) maybeStartLimiter(wg *sync.WaitGroup, errChan chan error, exiti
 		c.limitTick.Stop()
 		close(c.limiter)
 		c.limiter = nil
-		c.tickDone <- struct{}{}
 	}()
 }
 
-func (c *Client) stopLimiter() {
-	if c.limiter == nil {
+func (c *Client) maybeStartPingLoop(wg *sync.WaitGroup, errChan chan error, exiting chan struct{}) {
+	if c.config.PingFrequency <= 0 {
 		return
 	}
 
-	c.tickDone <- struct{}{}
-	<-c.tickDone
-}
-
-func (c *Client) startPingLoop(wg *sync.WaitGroup, errChan chan error, exiting chan struct{}) {
-	// We're firing off two new goroutines here.
-	wg.Add(2)
-
-	// PING ticker
-	go func() {
-		defer wg.Done()
-
-		t := time.NewTicker(c.config.PingFrequency)
-		defer t.Stop()
-
-		for {
-			select {
-			case <-t.C:
-				timestamp := time.Now()
-
-				// We need to append before we write so we can guarantee
-				// this will be in the queue when the PONG gets here.
-				c.sentPingLock.Lock()
-				c.sentPings = append(c.sentPings, timestamp)
-				c.sentPingLock.Unlock()
-
-				err := c.Writef("PING :%d", timestamp.Unix())
-				if err != nil {
-					errChan <- err
-					c.rwc.Close()
-					return
-				}
-			case <-exiting:
-				return
-			}
-		}
-	}()
+	wg.Add(1)
 
 	// PONG checker
 	go func() {
 		defer wg.Done()
 
-		var timer *time.Timer
-		var pingSent bool
+		var (
+			sentPings       []time.Time
+			pingTimeoutChan <-chan time.Time
+			ticker          = time.NewTicker(c.config.PingFrequency)
+		)
+
+		defer ticker.Stop()
 
 		for {
-			c.sentPingLock.Lock()
-			pingSent = len(c.sentPings) > 0
-			if pingSent {
-				timer = time.NewTimer(c.config.PingTimeout)
-			} else {
-				timer = time.NewTimer(c.config.PingFrequency)
+			// Reset the pingTimeoutChan if we have any pings we're waiting for
+			// and it isn't currently set.
+			if len(sentPings) > 0 && pingTimeoutChan == nil {
+				pingTimeoutChan = time.After(time.Now().Sub(sentPings[0]) + c.config.PingTimeout)
 			}
-			c.sentPingLock.Unlock()
 
 			select {
-			case <-timer.C:
-				if pingSent {
-					errChan <- errors.New("PING timeout")
-					c.rwc.Close()
+			case <-ticker.C:
+				timestamp := time.Now()
+				err := c.Writef("PING :%d", timestamp.Unix())
+				if err != nil {
+					errChan <- err
 					return
 				}
+				sentPings = append(sentPings, timestamp)
+			case <-pingTimeoutChan:
+				errChan <- errors.New("PING timeout")
+				return
+			case data := <-c.incomingPongChan:
+				if len(sentPings) == 0 || data != fmt.Sprintf("%d", sentPings[0].Unix()) {
+					continue
+				}
+
+				// Drop the first ping and clear the timeout chan
+				sentPings = sentPings[1:]
+				pingTimeoutChan = nil
 			case <-exiting:
 				return
 			}
-
-			timer.Stop()
 		}
 	}()
 }
@@ -245,12 +206,8 @@ func (c *Client) Run() error {
 	errChan := make(chan error, 3)
 	var wg sync.WaitGroup
 
-	// If PingFrequency isn't the zero value, we need to start a ping goroutine
-	// and a pong checker goroutine.
-	if c.config.PingFrequency > 0 {
-		c.startPingLoop(&wg, errChan, exiting)
-	}
 	c.maybeStartLimiter(&wg, errChan, exiting)
+	c.maybeStartPingLoop(&wg, errChan, exiting)
 
 	c.currentNick = c.config.Nick
 
