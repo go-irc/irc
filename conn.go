@@ -28,12 +28,18 @@ type Writer struct {
 	DebugCallback func(line string)
 
 	// Internal fields
-	writer io.Writer
+	writer        io.Writer
+	writeCallback func(w *Writer, line string) error
+}
+
+func defaultWriteCallback(w *Writer, line string) error {
+	_, err := w.writer.Write([]byte(line + "\r\n"))
+	return err
 }
 
 // NewWriter creates an irc.Writer from an io.Writer.
 func NewWriter(w io.Writer) *Writer {
-	return &Writer{nil, w}
+	return &Writer{nil, w, defaultWriteCallback}
 }
 
 // Write is a simple function which will write the given line to the
@@ -43,8 +49,7 @@ func (w *Writer) Write(line string) error {
 		w.DebugCallback(line)
 	}
 
-	_, err := w.writer.Write([]byte(line + "\r\n"))
-	return err
+	return w.writeCallback(w, line)
 }
 
 // Writef is a wrapper around the connection's Write method and

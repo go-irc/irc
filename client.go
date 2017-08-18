@@ -73,6 +73,13 @@ type ClientConfig struct {
 	PingFrequency time.Duration
 	PingTimeout   time.Duration
 
+	// SendLimit is how frequent messages can be sent. If this is zero,
+	// there will be no limit.
+	SendLimit time.Duration
+
+	// SendBurst is the number of messages which can be sent in a burst.
+	SendBurst int
+
 	// Handler is used for message dispatching.
 	Handler Handler
 }
@@ -88,15 +95,74 @@ type Client struct {
 	currentNick  string
 	sentPingLock sync.Mutex
 	sentPings    []time.Time
+
+	limitTick *time.Ticker
+	limiter   chan struct{}
+	tickDone  chan struct{}
 }
 
 // NewClient creates a client given an io stream and a client config.
 func NewClient(rwc io.ReadWriteCloser, config ClientConfig) *Client {
-	return &Client{
-		Conn:   NewConn(rwc),
-		rwc:    rwc,
-		config: config,
+	c := &Client{
+		Conn:     NewConn(rwc),
+		rwc:      rwc,
+		config:   config,
+		tickDone: make(chan struct{}),
 	}
+
+	// Replace the writer writeCallback with one of our own
+	c.Conn.Writer.writeCallback = c.writeCallback
+
+	return c
+}
+
+func (c *Client) writeCallback(w *Writer, line string) error {
+	if c.limiter != nil {
+		<-c.limiter
+	}
+
+	_, err := w.writer.Write([]byte(line + "\r\n"))
+	return err
+}
+
+func (c *Client) maybeStartLimiter() {
+	if c.config.SendLimit == 0 {
+		return
+	}
+
+	// If SendBurst is 0, this will be unbuffered, so keep that in mind.
+	c.limiter = make(chan struct{}, c.config.SendBurst)
+
+	c.limitTick = time.NewTicker(c.config.SendLimit)
+
+	go func() {
+		var done bool
+		for !done {
+			select {
+			case <-c.limitTick.C:
+				select {
+				case c.limiter <- struct{}{}:
+				default:
+				}
+			case <-c.tickDone:
+				done = true
+			}
+		}
+
+		c.limitTick.Stop()
+		close(c.limiter)
+		c.limiter = nil
+		c.tickDone <- struct{}{}
+	}()
+}
+
+func (c *Client) stopLimiter() {
+	if c.limiter == nil {
+		return
+	}
+
+	c.tickDone <- struct{}{}
+	<-c.tickDone
 }
 
 func (c *Client) startPingLoop(wg *sync.WaitGroup, errChan chan error, exiting chan struct{}) {
@@ -170,6 +236,9 @@ func (c *Client) startPingLoop(wg *sync.WaitGroup, errChan chan error, exiting c
 // strange and unexpected ways if it is called again before the first connection
 // exits.
 func (c *Client) Run() error {
+	c.maybeStartLimiter()
+	defer c.stopLimiter()
+
 	// exiting is used by the main goroutine here to ensure any sub-goroutines
 	// get closed when exiting.
 	exiting := make(chan struct{})
