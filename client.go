@@ -125,17 +125,20 @@ func (c *Client) writeCallback(w *Writer, line string) error {
 	return err
 }
 
-func (c *Client) maybeStartLimiter() {
+func (c *Client) maybeStartLimiter(wg *sync.WaitGroup, errChan chan error, exiting chan struct{}) {
 	if c.config.SendLimit == 0 {
 		return
 	}
 
+	wg.Add(1)
+
 	// If SendBurst is 0, this will be unbuffered, so keep that in mind.
 	c.limiter = make(chan struct{}, c.config.SendBurst)
-
 	c.limitTick = time.NewTicker(c.config.SendLimit)
 
 	go func() {
+		defer wg.Done()
+
 		var done bool
 		for !done {
 			select {
@@ -144,7 +147,7 @@ func (c *Client) maybeStartLimiter() {
 				case c.limiter <- struct{}{}:
 				default:
 				}
-			case <-c.tickDone:
+			case <-exiting:
 				done = true
 			}
 		}
@@ -236,9 +239,6 @@ func (c *Client) startPingLoop(wg *sync.WaitGroup, errChan chan error, exiting c
 // strange and unexpected ways if it is called again before the first connection
 // exits.
 func (c *Client) Run() error {
-	c.maybeStartLimiter()
-	defer c.stopLimiter()
-
 	// exiting is used by the main goroutine here to ensure any sub-goroutines
 	// get closed when exiting.
 	exiting := make(chan struct{})
@@ -250,6 +250,7 @@ func (c *Client) Run() error {
 	if c.config.PingFrequency > 0 {
 		c.startPingLoop(&wg, errChan, exiting)
 	}
+	c.maybeStartLimiter(&wg, errChan, exiting)
 
 	c.currentNick = c.config.Nick
 
