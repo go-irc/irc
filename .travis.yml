@@ -13,7 +13,7 @@ before_install:
   - rm ./testcases/*.go
 
 script:
-  - gometalinter --fast ./... -D gas --cyclo-over=12
+  - gometalinter --fast ./... -D gas
   - go test -race -v ./...
   - go test -covermode=count -coverprofile=profile.cov
 
