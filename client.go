@@ -154,50 +154,56 @@ func (c *Client) maybeStartPingLoop(wg *sync.WaitGroup, errChan chan error, exit
 }
 
 type pingDeadline struct {
-	Data     string
 	Deadline <-chan time.Time
+	Data     string
 }
 
 func (c *Client) pingLoop(wg *sync.WaitGroup, errChan chan error, exiting chan struct{}) {
 	defer wg.Done()
 
 	var (
-		sentPings       = map[string]time.Time{}
-		pingDeadlines   []pingDeadline
-		currentDeadline pingDeadline
+		needsPong       = map[string]bool{}
+		pingDeadlines   []*pingDeadline
+		currentDeadline *pingDeadline
 		ticker          = time.NewTicker(c.config.PingFrequency)
 	)
 
 	defer ticker.Stop()
 
 	for {
-		if len(pingDeadlines) > 0 {
+		// Find the next ping we haven't received yet.
+		for len(pingDeadlines) > 0 && !needsPong[currentDeadline.Data] {
 			currentDeadline = pingDeadlines[0]
 			pingDeadlines = pingDeadlines[1:]
 		}
 
 		select {
 		case <-ticker.C:
+			// Every time the ticker fires off we need to send a ping
+			// and store that we sent it.
 			timestamp := time.Now()
 			err := c.Writef("PING :%d", timestamp.Unix())
 			if err != nil {
 				errChan <- err
 				return
 			}
-			deadline := pingDeadline{
-				Data:     fmt.Sprintf("%d", timestamp.Unix()),
+			deadline := &pingDeadline{
 				Deadline: time.After(c.config.PingTimeout),
+				Data:     fmt.Sprintf("%d", timestamp.Unix()),
 			}
-			sentPings[deadline.Data] = timestamp
+			needsPong[deadline.Data] = true
 			pingDeadlines = append(pingDeadlines, deadline)
 		case <-currentDeadline.Deadline:
-			if _, ok := sentPings[currentDeadline.Data]; ok {
-				errChan <- errors.New("PING timeout")
+			// When the deadline comes back, if we still haven't
+			// gotten a pong, we kill the connection.
+			if !needsPong[currentDeadline.Data] {
+				continue
 			}
-			currentDeadline.Deadline = nil
+
+			errChan <- errors.New("PING timeout")
 			return
 		case data := <-c.incomingPongChan:
-			delete(sentPings, data)
+			delete(needsPong, data)
 		case <-exiting:
 			return
 		}
