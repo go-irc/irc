@@ -1,6 +1,7 @@
 package irc
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"sync"
@@ -201,7 +202,7 @@ func (c *Client) handlePing(timestamp int64, pongChan chan struct{}, wg *sync.Wa
 
 	select {
 	case <-timer.C:
-		c.sendError(err)
+		c.sendError(errors.New("Ping Timeout"))
 	case <-pongChan:
 		return
 	case <-exiting:
