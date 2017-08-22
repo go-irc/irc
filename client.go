@@ -168,7 +168,7 @@ func (c *Client) maybeStartPingLoop(wg *sync.WaitGroup, exiting chan struct{}) {
 				// Each time we get a tick, we send off a ping and start a
 				// goroutine to handle the pong.
 				timestamp := time.Now().Unix()
-				pongChan := make(chan struct{})
+				pongChan := make(chan struct{}, 1)
 				pingHandlers[fmt.Sprintf("%d", timestamp)] = pongChan
 				wg.Add(1)
 				go c.handlePing(timestamp, pongChan, wg, exiting)
