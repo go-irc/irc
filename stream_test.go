@@ -12,10 +12,10 @@ import (
 
 // TestAction is used to execute an action during a stream test. If a
 // non-nil error is returned the test will be failed.
-type TestAction func(t *testing.T, c *Client, rw *testReadWriter)
+type TestAction func(t *testing.T, rw *testReadWriter)
 
 func SendLine(output string) TestAction {
-	return func(t *testing.T, c *Client, rw *testReadWriter) {
+	return func(t *testing.T, rw *testReadWriter) {
 		// First we send the message
 		select {
 		case rw.readChan <- output:
@@ -33,13 +33,13 @@ func SendLine(output string) TestAction {
 }
 
 func SendFunc(cb func() string) TestAction {
-	return func(t *testing.T, c *Client, rw *testReadWriter) {
-		SendLine(cb())(t, c, rw)
+	return func(t *testing.T, rw *testReadWriter) {
+		SendLine(cb())(t, rw)
 	}
 }
 
 func LineFunc(cb func(m *Message)) TestAction {
-	return func(t *testing.T, c *Client, rw *testReadWriter) {
+	return func(t *testing.T, rw *testReadWriter) {
 		select {
 		case line := <-rw.writeChan:
 			cb(MustParseMessage(line))
@@ -55,7 +55,7 @@ func ExpectLine(input string) TestAction {
 }
 
 func ExpectLineWithTimeout(input string, timeout time.Duration) TestAction {
-	return func(t *testing.T, c *Client, rw *testReadWriter) {
+	return func(t *testing.T, rw *testReadWriter) {
 		select {
 		case line := <-rw.writeChan:
 			assert.Equal(t, input, line)
@@ -67,7 +67,7 @@ func ExpectLineWithTimeout(input string, timeout time.Duration) TestAction {
 }
 
 func Delay(delay time.Duration) TestAction {
-	return func(t *testing.T, c *Client, rw *testReadWriter) {
+	return func(t *testing.T, rw *testReadWriter) {
 		select {
 		case <-time.After(delay):
 		case <-rw.exiting:
@@ -141,7 +141,7 @@ func (rw *testReadWriter) Write(buf []byte) (int, error) {
 	}
 }
 
-func runTest(t *testing.T, cc ClientConfig, expectedErr error, actions []TestAction) *Client {
+func runClientTest(t *testing.T, cc ClientConfig, expectedErr error, actions []TestAction) *Client {
 	rw := &testReadWriter{
 		actions:       actions,
 		writeChan:     make(chan string),
@@ -161,7 +161,7 @@ func runTest(t *testing.T, cc ClientConfig, expectedErr error, actions []TestAct
 
 	// Perform each of the actions
 	for _, action := range rw.actions {
-		action(t, c, rw)
+		action(t, rw)
 	}
 
 	// TODO: Make sure there are no more incoming messages

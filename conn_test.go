@@ -41,11 +41,6 @@ func (t *testReadWriteCloser) Write(p []byte) (int, error) {
 	return t.client.Write(p)
 }
 
-// Ensure we can close the thing
-func (t *testReadWriteCloser) Close() error {
-	return nil
-}
-
 func testReadMessage(t *testing.T, c *Conn) *Message {
 	m, err := c.ReadMessage()
 	assert.NoError(t, err)

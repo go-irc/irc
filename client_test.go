@@ -38,13 +38,13 @@ func TestClient(t *testing.T) {
 		Name: "test_name",
 	}
 
-	runTest(t, config, io.EOF, []TestAction{
+	runClientTest(t, config, io.EOF, []TestAction{
 		ExpectLine("PASS :test_pass\r\n"),
 		ExpectLine("NICK :test_nick\r\n"),
 		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
 	})
 
-	runTest(t, config, io.EOF, []TestAction{
+	runClientTest(t, config, io.EOF, []TestAction{
 		ExpectLine("PASS :test_pass\r\n"),
 		ExpectLine("NICK :test_nick\r\n"),
 		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
@@ -52,7 +52,7 @@ func TestClient(t *testing.T) {
 		ExpectLine("PONG :hello world\r\n"),
 	})
 
-	c := runTest(t, config, io.EOF, []TestAction{
+	c := runClientTest(t, config, io.EOF, []TestAction{
 		ExpectLine("PASS :test_pass\r\n"),
 		ExpectLine("NICK :test_nick\r\n"),
 		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
@@ -60,7 +60,7 @@ func TestClient(t *testing.T) {
 	})
 	assert.Equal(t, "new_test_nick", c.CurrentNick())
 
-	c = runTest(t, config, io.EOF, []TestAction{
+	c = runClientTest(t, config, io.EOF, []TestAction{
 		ExpectLine("PASS :test_pass\r\n"),
 		ExpectLine("NICK :test_nick\r\n"),
 		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
@@ -68,7 +68,7 @@ func TestClient(t *testing.T) {
 	})
 	assert.Equal(t, "new_test_nick", c.CurrentNick())
 
-	c = runTest(t, config, io.EOF, []TestAction{
+	c = runClientTest(t, config, io.EOF, []TestAction{
 		ExpectLine("PASS :test_pass\r\n"),
 		ExpectLine("NICK :test_nick\r\n"),
 		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
@@ -77,7 +77,7 @@ func TestClient(t *testing.T) {
 	})
 	assert.Equal(t, "test_nick_", c.CurrentNick())
 
-	c = runTest(t, config, io.EOF, []TestAction{
+	c = runClientTest(t, config, io.EOF, []TestAction{
 		ExpectLine("PASS :test_pass\r\n"),
 		ExpectLine("NICK :test_nick\r\n"),
 		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
@@ -105,7 +105,7 @@ func TestSendLimit(t *testing.T) {
 	}
 
 	before := time.Now()
-	runTest(t, config, io.EOF, []TestAction{
+	runClientTest(t, config, io.EOF, []TestAction{
 		ExpectLine("PASS :test_pass\r\n"),
 		ExpectLine("NICK :test_nick\r\n"),
 		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
@@ -121,7 +121,7 @@ func TestSendLimit(t *testing.T) {
 	config.SendBurst = 0
 
 	before = time.Now()
-	runTest(t, config, io.EOF, []TestAction{
+	runClientTest(t, config, io.EOF, []TestAction{
 		ExpectLine("PASS :test_pass\r\n"),
 		ExpectLine("NICK :test_nick\r\n"),
 		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
@@ -143,7 +143,7 @@ func TestClientHandler(t *testing.T) {
 		Handler: handler,
 	}
 
-	runTest(t, config, io.EOF, []TestAction{
+	runClientTest(t, config, io.EOF, []TestAction{
 		ExpectLine("PASS :test_pass\r\n"),
 		ExpectLine("NICK :test_nick\r\n"),
 		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
@@ -159,7 +159,7 @@ func TestClientHandler(t *testing.T) {
 	}, handler.Messages())
 
 	// Ensure CTCP messages are parsed
-	runTest(t, config, io.EOF, []TestAction{
+	runClientTest(t, config, io.EOF, []TestAction{
 		ExpectLine("PASS :test_pass\r\n"),
 		ExpectLine("NICK :test_nick\r\n"),
 		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
@@ -176,7 +176,7 @@ func TestClientHandler(t *testing.T) {
 
 	// CTCP Regression test for PR#47
 	// Proper CTCP should start AND end in \x01
-	runTest(t, config, io.EOF, []TestAction{
+	runClientTest(t, config, io.EOF, []TestAction{
 		ExpectLine("PASS :test_pass\r\n"),
 		ExpectLine("NICK :test_nick\r\n"),
 		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
@@ -222,7 +222,7 @@ func TestPingLoop(t *testing.T) {
 	var lastPing *Message
 
 	// Successful ping
-	runTest(t, config, io.EOF, []TestAction{
+	runClientTest(t, config, io.EOF, []TestAction{
 		ExpectLine("PASS :test_pass\r\n"),
 		ExpectLine("NICK :test_nick\r\n"),
 		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
@@ -238,7 +238,7 @@ func TestPingLoop(t *testing.T) {
 	})
 
 	// Ping timeout
-	runTest(t, config, errors.New("Ping Timeout"), []TestAction{
+	runClientTest(t, config, errors.New("Ping Timeout"), []TestAction{
 		ExpectLine("PASS :test_pass\r\n"),
 		ExpectLine("NICK :test_nick\r\n"),
 		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
@@ -251,7 +251,7 @@ func TestPingLoop(t *testing.T) {
 	})
 
 	// Exit in the middle of handling a ping
-	runTest(t, config, io.EOF, []TestAction{
+	runClientTest(t, config, io.EOF, []TestAction{
 		ExpectLine("PASS :test_pass\r\n"),
 		ExpectLine("NICK :test_nick\r\n"),
 		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
@@ -264,7 +264,7 @@ func TestPingLoop(t *testing.T) {
 
 	// This one is just for coverage, so we know we're hitting the
 	// branch that drops extra pings.
-	runTest(t, config, io.EOF, []TestAction{
+	runClientTest(t, config, io.EOF, []TestAction{
 		ExpectLine("PASS :test_pass\r\n"),
 		ExpectLine("NICK :test_nick\r\n"),
 		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
