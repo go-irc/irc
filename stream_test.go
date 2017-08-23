@@ -141,8 +141,8 @@ func (rw *testReadWriter) Write(buf []byte) (int, error) {
 	}
 }
 
-func runClientTest(t *testing.T, cc ClientConfig, expectedErr error, actions []TestAction) *Client {
-	rw := &testReadWriter{
+func newTestReadWriter(actions []TestAction) *testReadWriter {
+	return &testReadWriter{
 		actions:       actions,
 		writeChan:     make(chan string),
 		readChan:      make(chan string),
@@ -150,7 +150,10 @@ func runClientTest(t *testing.T, cc ClientConfig, expectedErr error, actions []T
 		exiting:       make(chan struct{}),
 		clientDone:    make(chan struct{}),
 	}
+}
 
+func runClientTest(t *testing.T, cc ClientConfig, expectedErr error, actions []TestAction) *Client {
+	rw := newTestReadWriter(actions)
 	c := NewClient(rw, cc)
 
 	go func() {
@@ -159,6 +162,12 @@ func runClientTest(t *testing.T, cc ClientConfig, expectedErr error, actions []T
 		close(rw.clientDone)
 	}()
 
+	runTest(t, rw, actions)
+
+	return c
+}
+
+func runTest(t *testing.T, rw *testReadWriter, actions []TestAction) {
 	// Perform each of the actions
 	for _, action := range rw.actions {
 		action(t, rw)
@@ -173,6 +182,4 @@ func runClientTest(t *testing.T, cc ClientConfig, expectedErr error, actions []T
 	case <-time.After(1 * time.Second):
 		assert.Fail(t, "Timeout in client shutdown")
 	}
-
-	return c
 }
