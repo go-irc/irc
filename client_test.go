@@ -270,12 +270,13 @@ func TestPingLoop(t *testing.T) {
 		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
 		SendLine("001 :hello_world\r\n"),
 
-		// It's a buffered channel of 5, so we want to send 6 of them
+		// It's a buffered channel of 5, so we want to send at least 6 of them
 		SendLine("PONG :hello 1\r\n"),
 		SendLine("PONG :hello 2\r\n"),
 		SendLine("PONG :hello 3\r\n"),
 		SendLine("PONG :hello 4\r\n"),
 		SendLine("PONG :hello 5\r\n"),
 		SendLine("PONG :hello 6\r\n"),
+		SendLine("PONG :hello 7\r\n"),
 	})
 }
