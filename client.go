@@ -1,7 +1,10 @@
 package irc
 
 import (
+	"errors"
+	"fmt"
 	"io"
+	"sync"
 	"time"
 )
 
@@ -24,6 +27,14 @@ var clientFilters = map[string]func(*Client, *Message){
 		reply := m.Copy()
 		reply.Command = "PONG"
 		c.WriteMessage(reply)
+	},
+	"PONG": func(c *Client, m *Message) {
+		if c.incomingPongChan != nil {
+			select {
+			case c.incomingPongChan <- m.Trailing():
+			default:
+			}
+		}
 	},
 	"PRIVMSG": func(c *Client, m *Message) {
 		// Clean up CTCP stuff so everyone doesn't have to parse it
@@ -50,6 +61,10 @@ type ClientConfig struct {
 	User string
 	Name string
 
+	// Connection settings
+	PingFrequency time.Duration
+	PingTimeout   time.Duration
+
 	// SendLimit is how frequent messages can be sent. If this is zero,
 	// there will be no limit.
 	SendLimit time.Duration
@@ -68,18 +83,18 @@ type Client struct {
 	config ClientConfig
 
 	// Internal state
-	currentNick string
-	limitTick   *time.Ticker
-	limiter     chan struct{}
-	tickDone    chan struct{}
+	currentNick      string
+	limiter          chan struct{}
+	incomingPongChan chan string
+	errChan          chan error
 }
 
 // NewClient creates a client given an io stream and a client config.
-func NewClient(rwc io.ReadWriter, config ClientConfig) *Client {
+func NewClient(rw io.ReadWriter, config ClientConfig) *Client {
 	c := &Client{
-		Conn:     NewConn(rwc),
-		config:   config,
-		tickDone: make(chan struct{}),
+		Conn:    NewConn(rw),
+		config:  config,
+		errChan: make(chan error, 1),
 	}
 
 	// Replace the writer writeCallback with one of our own
@@ -97,52 +112,122 @@ func (c *Client) writeCallback(w *Writer, line string) error {
 	return err
 }
 
-func (c *Client) maybeStartLimiter() {
+func (c *Client) maybeStartLimiter(wg *sync.WaitGroup, exiting chan struct{}) {
 	if c.config.SendLimit == 0 {
 		return
 	}
 
+	wg.Add(1)
+
 	// If SendBurst is 0, this will be unbuffered, so keep that in mind.
 	c.limiter = make(chan struct{}, c.config.SendBurst)
-
-	c.limitTick = time.NewTicker(c.config.SendLimit)
+	limitTick := time.NewTicker(c.config.SendLimit)
 
 	go func() {
+		defer wg.Done()
+
 		var done bool
 		for !done {
 			select {
-			case <-c.limitTick.C:
+			case <-limitTick.C:
 				select {
 				case c.limiter <- struct{}{}:
 				default:
 				}
-			case <-c.tickDone:
+			case <-exiting:
 				done = true
 			}
 		}
 
-		c.limitTick.Stop()
+		limitTick.Stop()
 		close(c.limiter)
 		c.limiter = nil
-		c.tickDone <- struct{}{}
 	}()
 }
 
-func (c *Client) stopLimiter() {
-	if c.limiter == nil {
+func (c *Client) maybeStartPingLoop(wg *sync.WaitGroup, exiting chan struct{}) {
+	if c.config.PingFrequency <= 0 {
 		return
 	}
 
-	c.tickDone <- struct{}{}
-	<-c.tickDone
+	wg.Add(1)
+
+	c.incomingPongChan = make(chan string, 5)
+
+	go func() {
+		defer wg.Done()
+
+		pingHandlers := make(map[string]chan struct{})
+		ticker := time.NewTicker(c.config.PingFrequency)
+
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ticker.C:
+				// Each time we get a tick, we send off a ping and start a
+				// goroutine to handle the pong.
+				timestamp := time.Now().Unix()
+				pongChan := make(chan struct{}, 1)
+				pingHandlers[fmt.Sprintf("%d", timestamp)] = pongChan
+				wg.Add(1)
+				go c.handlePing(timestamp, pongChan, wg, exiting)
+			case data := <-c.incomingPongChan:
+				// Make sure the pong gets routed to the correct
+				// goroutine.
+				c := pingHandlers[data]
+				delete(pingHandlers, data)
+
+				if c != nil {
+					c <- struct{}{}
+				}
+			case <-exiting:
+				return
+			}
+		}
+	}()
+}
+
+func (c *Client) handlePing(timestamp int64, pongChan chan struct{}, wg *sync.WaitGroup, exiting chan struct{}) {
+	defer wg.Done()
+
+	err := c.Writef("PING :%d", timestamp)
+	if err != nil {
+		c.sendError(err)
+		return
+	}
+
+	timer := time.NewTimer(c.config.PingTimeout)
+	defer timer.Stop()
+
+	select {
+	case <-timer.C:
+		c.sendError(errors.New("Ping Timeout"))
+	case <-pongChan:
+		return
+	case <-exiting:
+		return
+	}
+}
+
+func (c *Client) sendError(err error) {
+	select {
+	case c.errChan <- err:
+	default:
+	}
 }
 
 // Run starts the main loop for this IRC connection. Note that it may break in
 // strange and unexpected ways if it is called again before the first connection
 // exits.
 func (c *Client) Run() error {
-	c.maybeStartLimiter()
-	defer c.stopLimiter()
+	// exiting is used by the main goroutine here to ensure any sub-goroutines
+	// get closed when exiting.
+	exiting := make(chan struct{})
+	var wg sync.WaitGroup
+
+	c.maybeStartLimiter(&wg, exiting)
+	c.maybeStartPingLoop(&wg, exiting)
 
 	c.currentNick = c.config.Nick
 
@@ -156,7 +241,8 @@ func (c *Client) Run() error {
 	for {
 		m, err := c.ReadMessage()
 		if err != nil {
-			return err
+			c.sendError(err)
+			break
 		}
 
 		if f, ok := clientFilters[m.Command]; ok {
@@ -167,6 +253,14 @@ func (c *Client) Run() error {
 			c.config.Handler.Handle(c, m)
 		}
 	}
+
+	// Wait for an error from any goroutine, then signal we're exiting and wait
+	// for the goroutines to exit.
+	err := <-c.errChan
+	close(exiting)
+	wg.Wait()
+
+	return err
 }
 
 // CurrentNick returns what the nick of the client is known to be at this point

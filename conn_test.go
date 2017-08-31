@@ -19,13 +19,6 @@ func (ew *errorWriter) Write([]byte) (int, error) {
 type readWriteCloser struct {
 	io.Reader
 	io.Writer
-	io.Closer
-}
-
-type nilCloser struct{}
-
-func (nc *nilCloser) Close() error {
-	return nil
 }
 
 type testReadWriteCloser struct {
@@ -46,11 +39,6 @@ func (t *testReadWriteCloser) Read(p []byte) (int, error) {
 
 func (t *testReadWriteCloser) Write(p []byte) (int, error) {
 	return t.client.Write(p)
-}
-
-// Ensure we can close the thing
-func (t *testReadWriteCloser) Close() error {
-	return nil
 }
 
 func testReadMessage(t *testing.T, c *Conn) *Message {
@@ -84,7 +72,6 @@ func TestWriteMessageError(t *testing.T) {
 	rw := readWriteCloser{
 		&bytes.Buffer{},
 		&errorWriter{},
-		&nilCloser{},
 	}
 
 	c := NewConn(rw)

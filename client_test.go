@@ -1,6 +1,8 @@
 package irc
 
 import (
+	"errors"
+	"fmt"
 	"io"
 	"testing"
 	"time"
@@ -29,72 +31,58 @@ func (th *TestHandler) Messages() []*Message {
 func TestClient(t *testing.T) {
 	t.Parallel()
 
-	rwc := newTestReadWriteCloser()
 	config := ClientConfig{
 		Nick: "test_nick",
 		Pass: "test_pass",
 		User: "test_user",
 		Name: "test_name",
 	}
-	c := NewClient(rwc, config)
-	err := c.Run()
-	assert.Equal(t, io.EOF, err)
 
-	testLines(t, rwc, []string{
-		"PASS :test_pass",
-		"NICK :test_nick",
-		"USER test_user 0.0.0.0 0.0.0.0 :test_name",
+	runClientTest(t, config, io.EOF, []TestAction{
+		ExpectLine("PASS :test_pass\r\n"),
+		ExpectLine("NICK :test_nick\r\n"),
+		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
 	})
 
-	rwc.server.WriteString("PING :hello world\r\n")
-	err = c.Run()
-	assert.Equal(t, io.EOF, err)
-	testLines(t, rwc, []string{
-		"PASS :test_pass",
-		"NICK :test_nick",
-		"USER test_user 0.0.0.0 0.0.0.0 :test_name",
-		"PONG :hello world",
+	runClientTest(t, config, io.EOF, []TestAction{
+		ExpectLine("PASS :test_pass\r\n"),
+		ExpectLine("NICK :test_nick\r\n"),
+		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
+		SendLine("PING :hello world\r\n"),
+		ExpectLine("PONG :hello world\r\n"),
 	})
 
-	rwc.server.WriteString(":test_nick NICK :new_test_nick\r\n")
-	err = c.Run()
-	assert.Equal(t, io.EOF, err)
-	testLines(t, rwc, []string{
-		"PASS :test_pass",
-		"NICK :test_nick",
-		"USER test_user 0.0.0.0 0.0.0.0 :test_name",
+	c := runClientTest(t, config, io.EOF, []TestAction{
+		ExpectLine("PASS :test_pass\r\n"),
+		ExpectLine("NICK :test_nick\r\n"),
+		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
+		SendLine(":test_nick NICK :new_test_nick\r\n"),
 	})
 	assert.Equal(t, "new_test_nick", c.CurrentNick())
 
-	rwc.server.WriteString("001 :new_test_nick\r\n")
-	err = c.Run()
-	assert.Equal(t, io.EOF, err)
-	testLines(t, rwc, []string{
-		"PASS :test_pass",
-		"NICK :test_nick",
-		"USER test_user 0.0.0.0 0.0.0.0 :test_name",
+	c = runClientTest(t, config, io.EOF, []TestAction{
+		ExpectLine("PASS :test_pass\r\n"),
+		ExpectLine("NICK :test_nick\r\n"),
+		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
+		SendLine("001 :new_test_nick\r\n"),
 	})
 	assert.Equal(t, "new_test_nick", c.CurrentNick())
 
-	rwc.server.WriteString("433\r\n")
-	err = c.Run()
-	assert.Equal(t, io.EOF, err)
-	testLines(t, rwc, []string{
-		"PASS :test_pass",
-		"NICK :test_nick",
-		"USER test_user 0.0.0.0 0.0.0.0 :test_name",
-		"NICK :test_nick_",
+	c = runClientTest(t, config, io.EOF, []TestAction{
+		ExpectLine("PASS :test_pass\r\n"),
+		ExpectLine("NICK :test_nick\r\n"),
+		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
+		SendLine("433\r\n"),
+		ExpectLine("NICK :test_nick_\r\n"),
 	})
 	assert.Equal(t, "test_nick_", c.CurrentNick())
 
-	rwc.server.WriteString("437\r\n")
-	err = c.Run()
-	assert.Equal(t, io.EOF, err)
-	testLines(t, rwc, []string{
-		"PASS :test_pass",
-		"NICK :test_nick",
-		"USER test_user 0.0.0.0 0.0.0.0 :test_name",
-		"NICK :test_nick_",
+	c = runClientTest(t, config, io.EOF, []TestAction{
+		ExpectLine("PASS :test_pass\r\n"),
+		ExpectLine("NICK :test_nick\r\n"),
+		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
+		SendLine("437\r\n"),
+		ExpectLine("NICK :test_nick_\r\n"),
 	})
 	assert.Equal(t, "test_nick_", c.CurrentNick())
 }
@@ -103,7 +91,7 @@ func TestSendLimit(t *testing.T) {
 	t.Parallel()
 
 	handler := &TestHandler{}
-	rwc := newTestReadWriteCloser()
+
 	config := ClientConfig{
 		Nick: "test_nick",
 		Pass: "test_pass",
@@ -116,42 +104,36 @@ func TestSendLimit(t *testing.T) {
 		SendBurst: 2,
 	}
 
-	rwc.server.WriteString("001 :hello_world\r\n")
-	c := NewClient(rwc, config)
-
 	before := time.Now()
-	err := c.Run()
-	assert.Equal(t, io.EOF, err)
-	assert.WithinDuration(t, before, time.Now(), 50*time.Millisecond)
-	testLines(t, rwc, []string{
-		"PASS :test_pass",
-		"NICK :test_nick",
-		"USER test_user 0.0.0.0 0.0.0.0 :test_name",
+	runClientTest(t, config, io.EOF, []TestAction{
+		ExpectLine("PASS :test_pass\r\n"),
+		ExpectLine("NICK :test_nick\r\n"),
+		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
+		SendLine("001 :hello_world\r\n"),
 	})
+	assert.WithinDuration(t, before, time.Now(), 50*time.Millisecond)
 
 	// This last test isn't really a test. It's being used to make sure we
 	// hit the branch which handles dropping ticks if the buffered channel is
 	// full.
-	rwc.server.WriteString("001 :hello world\r\n")
 	handler.delay = 20 * time.Millisecond // Sleep for 20ms when we get the 001 message
-	c.config.SendLimit = 10 * time.Millisecond
-	c.config.SendBurst = 0
+	config.SendLimit = 10 * time.Millisecond
+	config.SendBurst = 0
+
 	before = time.Now()
-	err = c.Run()
-	assert.Equal(t, io.EOF, err)
-	assert.WithinDuration(t, before, time.Now(), 60*time.Millisecond)
-	testLines(t, rwc, []string{
-		"PASS :test_pass",
-		"NICK :test_nick",
-		"USER test_user 0.0.0.0 0.0.0.0 :test_name",
+	runClientTest(t, config, io.EOF, []TestAction{
+		ExpectLine("PASS :test_pass\r\n"),
+		ExpectLine("NICK :test_nick\r\n"),
+		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
+		SendLine("001 :hello_world\r\n"),
 	})
+	assert.WithinDuration(t, before, time.Now(), 60*time.Millisecond)
 }
 
 func TestClientHandler(t *testing.T) {
 	t.Parallel()
 
 	handler := &TestHandler{}
-	rwc := newTestReadWriteCloser()
 	config := ClientConfig{
 		Nick: "test_nick",
 		Pass: "test_pass",
@@ -161,17 +143,12 @@ func TestClientHandler(t *testing.T) {
 		Handler: handler,
 	}
 
-	rwc.server.WriteString("001 :hello_world\r\n")
-	c := NewClient(rwc, config)
-	err := c.Run()
-	assert.Equal(t, io.EOF, err)
-
-	testLines(t, rwc, []string{
-		"PASS :test_pass",
-		"NICK :test_nick",
-		"USER test_user 0.0.0.0 0.0.0.0 :test_name",
+	runClientTest(t, config, io.EOF, []TestAction{
+		ExpectLine("PASS :test_pass\r\n"),
+		ExpectLine("NICK :test_nick\r\n"),
+		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
+		SendLine("001 :hello_world\r\n"),
 	})
-
 	assert.EqualValues(t, []*Message{
 		{
 			Tags:    Tags{},
@@ -182,9 +159,12 @@ func TestClientHandler(t *testing.T) {
 	}, handler.Messages())
 
 	// Ensure CTCP messages are parsed
-	rwc.server.WriteString(":world PRIVMSG :\x01VERSION\x01\r\n")
-	err = c.Run()
-	assert.Equal(t, io.EOF, err)
+	runClientTest(t, config, io.EOF, []TestAction{
+		ExpectLine("PASS :test_pass\r\n"),
+		ExpectLine("NICK :test_nick\r\n"),
+		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
+		SendLine(":world PRIVMSG :\x01VERSION\x01\r\n"),
+	})
 	assert.EqualValues(t, []*Message{
 		{
 			Tags:    Tags{},
@@ -196,9 +176,12 @@ func TestClientHandler(t *testing.T) {
 
 	// CTCP Regression test for PR#47
 	// Proper CTCP should start AND end in \x01
-	rwc.server.WriteString(":world PRIVMSG :\x01VERSION\r\n")
-	err = c.Run()
-	assert.Equal(t, io.EOF, err)
+	runClientTest(t, config, io.EOF, []TestAction{
+		ExpectLine("PASS :test_pass\r\n"),
+		ExpectLine("NICK :test_nick\r\n"),
+		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
+		SendLine(":world PRIVMSG :\x01VERSION\r\n"),
+	})
 	assert.EqualValues(t, []*Message{
 		{
 			Tags:    Tags{},
@@ -207,7 +190,12 @@ func TestClientHandler(t *testing.T) {
 			Params:  []string{"\x01VERSION"},
 		},
 	}, handler.Messages())
+}
 
+func TestFromChannel(t *testing.T) {
+	t.Parallel()
+
+	c := Client{currentNick: "test_nick"}
 	m := MustParseMessage("PRIVMSG test_nick :hello world")
 	assert.False(t, c.FromChannel(m))
 
@@ -216,4 +204,79 @@ func TestClientHandler(t *testing.T) {
 
 	m = MustParseMessage("PING")
 	assert.False(t, c.FromChannel(m))
+}
+
+func TestPingLoop(t *testing.T) {
+	t.Parallel()
+
+	config := ClientConfig{
+		Nick: "test_nick",
+		Pass: "test_pass",
+		User: "test_user",
+		Name: "test_name",
+
+		PingFrequency: 20 * time.Millisecond,
+		PingTimeout:   5 * time.Millisecond,
+	}
+
+	var lastPing *Message
+
+	// Successful ping
+	runClientTest(t, config, io.EOF, []TestAction{
+		ExpectLine("PASS :test_pass\r\n"),
+		ExpectLine("NICK :test_nick\r\n"),
+		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
+		SendLine("001 :hello_world\r\n"),
+		Delay(20 * time.Millisecond),
+		LineFunc(func(m *Message) {
+			lastPing = m
+		}),
+		SendFunc(func() string {
+			return fmt.Sprintf("PONG :%s\r\n", lastPing.Trailing())
+		}),
+		Delay(10 * time.Millisecond),
+	})
+
+	// Ping timeout
+	runClientTest(t, config, errors.New("Ping Timeout"), []TestAction{
+		ExpectLine("PASS :test_pass\r\n"),
+		ExpectLine("NICK :test_nick\r\n"),
+		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
+		SendLine("001 :hello_world\r\n"),
+		Delay(20 * time.Millisecond),
+		LineFunc(func(m *Message) {
+			lastPing = m
+		}),
+		Delay(20 * time.Millisecond),
+	})
+
+	// Exit in the middle of handling a ping
+	runClientTest(t, config, io.EOF, []TestAction{
+		ExpectLine("PASS :test_pass\r\n"),
+		ExpectLine("NICK :test_nick\r\n"),
+		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
+		SendLine("001 :hello_world\r\n"),
+		Delay(20 * time.Millisecond),
+		LineFunc(func(m *Message) {
+			lastPing = m
+		}),
+	})
+
+	// This one is just for coverage, so we know we're hitting the
+	// branch that drops extra pings.
+	runClientTest(t, config, io.EOF, []TestAction{
+		ExpectLine("PASS :test_pass\r\n"),
+		ExpectLine("NICK :test_nick\r\n"),
+		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
+		SendLine("001 :hello_world\r\n"),
+
+		// It's a buffered channel of 5, so we want to send at least 6 of them
+		SendLine("PONG :hello 1\r\n"),
+		SendLine("PONG :hello 2\r\n"),
+		SendLine("PONG :hello 3\r\n"),
+		SendLine("PONG :hello 4\r\n"),
+		SendLine("PONG :hello 5\r\n"),
+		SendLine("PONG :hello 6\r\n"),
+		SendLine("PONG :hello 7\r\n"),
+	})
 }

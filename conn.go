@@ -15,13 +15,10 @@ type Conn struct {
 
 // NewConn creates a new Conn
 func NewConn(rw io.ReadWriter) *Conn {
-	// Create the client
-	c := &Conn{
+	return &Conn{
 		NewReader(rw),
 		NewWriter(rw),
 	}
-
-	return c
 }
 
 // Writer is the outgoing side of a connection.
@@ -79,7 +76,10 @@ type Reader struct {
 	reader *bufio.Reader
 }
 
-// NewReader creates an irc.Reader from an io.Reader.
+// NewReader creates an irc.Reader from an io.Reader. Note that once a reader is
+// passed into this function, you should no longer use it as it is being used
+// inside a bufio.Reader so you cannot rely on only the amount of data for a
+// Message being read when you call ReadMessage.
 func NewReader(r io.Reader) *Reader {
 	return &Reader{
 		nil,
