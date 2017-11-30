@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 	"sync"
 	"time"
 )
@@ -76,6 +77,20 @@ type ClientConfig struct {
 	Handler Handler
 }
 
+type cap struct {
+	// Requested means that this cap was requested by the user
+	Requested bool
+
+	// Required will be true if this cap is non-optional
+	Required bool
+
+	// Enabled means that this cap was accepted by the server
+	Enabled bool
+
+	// Available means that the server supports this cap
+	Available bool
+}
+
 // Client is a wrapper around Conn which is designed to make common operations
 // much simpler.
 type Client struct {
@@ -87,6 +102,7 @@ type Client struct {
 	limiter          chan struct{}
 	incomingPongChan chan string
 	errChan          chan error
+	caps             map[string]cap
 }
 
 // NewClient creates a client given an io stream and a client config.
@@ -95,6 +111,7 @@ func NewClient(rw io.ReadWriter, config ClientConfig) *Client {
 		Conn:    NewConn(rw),
 		config:  config,
 		errChan: make(chan error, 1),
+		caps:    make(map[string]cap),
 	}
 
 	// Replace the writer writeCallback with one of our own
@@ -175,6 +192,7 @@ func (c *Client) maybeStartPingLoop(wg *sync.WaitGroup, exiting chan struct{}) {
 			case data := <-c.incomingPongChan:
 				// Make sure the pong gets routed to the correct
 				// goroutine.
+
 				c := pingHandlers[data]
 				delete(pingHandlers, data)
 
@@ -217,6 +235,91 @@ func (c *Client) sendError(err error) {
 	}
 }
 
+func (c *Client) CapRequest(capName string, required bool) {
+	cap := c.caps[capName]
+	cap.Requested = true
+	cap.Required = cap.Required || required
+	c.caps[capName] = cap
+}
+
+func (c *Client) CapEnabled(capName string) bool {
+	return c.caps[capName].Enabled
+}
+
+func (c *Client) CapAvailable(capName string) bool {
+	return c.caps[capName].Available
+}
+
+func (c *Client) handleCapHandshake() error {
+	c.CapRequest("multi-prefix", true)
+	c.CapRequest("does-not-exist", false)
+
+	c.Write("CAP LS")
+	remainingResponses := 1 // We count the CAP LS response as a normal response
+	for key, cap := range c.caps {
+		if cap.Requested {
+			c.Writef("CAP REQ :%s", key)
+			remainingResponses++
+		}
+	}
+
+	for remainingResponses > 0 {
+		m, err := c.ReadMessage()
+		if err != nil {
+			return err
+		}
+
+		// Handle CAP messages
+		if m.Command == "CAP" && len(m.Params) > 1 {
+			fmt.Printf("%+v\n", m)
+			switch m.Params[1] {
+			case "LS":
+				for _, key := range strings.Split(m.Trailing(), " ") {
+					cap := c.caps[key]
+					cap.Available = true
+					c.caps[key] = cap
+				}
+				remainingResponses--
+			case "ACK":
+				for _, key := range strings.Split(m.Trailing(), " ") {
+					cap := c.caps[key]
+					cap.Enabled = true
+					c.caps[key] = cap
+				}
+				remainingResponses--
+			case "NAK":
+				// If we got a NAK and this REQ was required, we need to bail
+				// with an error.
+				for _, key := range strings.Split(m.Trailing(), " ") {
+					if c.caps[key].Required {
+						return fmt.Errorf("CAP %s requested but was rejected", key)
+					}
+				}
+				remainingResponses--
+			}
+		}
+
+		// Now that CAP handling is done, also handle the message as normal.
+		if f, ok := clientFilters[m.Command]; ok {
+			f(c, m)
+		}
+
+		if c.config.Handler != nil {
+			c.config.Handler.Handle(c, m)
+		}
+	}
+
+	for key, cap := range c.caps {
+		if cap.Required && !cap.Enabled {
+			return fmt.Errorf("CAP %s requested but not accepted", key)
+		}
+	}
+
+	c.Write("CAP END")
+
+	return nil
+}
+
 // Run starts the main loop for this IRC connection. Note that it may break in
 // strange and unexpected ways if it is called again before the first connection
 // exits.
@@ -226,14 +329,23 @@ func (c *Client) Run() error {
 	exiting := make(chan struct{})
 	var wg sync.WaitGroup
 
-	c.maybeStartLimiter(&wg, exiting)
-	c.maybeStartPingLoop(&wg, exiting)
-
 	c.currentNick = c.config.Nick
 
 	if c.config.Pass != "" {
 		c.Writef("PASS :%s", c.config.Pass)
 	}
+
+	err := c.handleCapHandshake()
+	if err != nil {
+		c.sendError(err)
+		return err
+	}
+
+	// It's more technically correct to start these before sending anything, but
+	// we wait until after the CAP handshake for simplicity so we don't need to
+	// clean up if the CAP handshake fails.
+	c.maybeStartLimiter(&wg, exiting)
+	c.maybeStartPingLoop(&wg, exiting)
 
 	c.Writef("NICK :%s", c.config.Nick)
 	c.Writef("USER %s 0.0.0.0 0.0.0.0 :%s", c.config.User, c.config.Name)
@@ -256,7 +368,7 @@ func (c *Client) Run() error {
 
 	// Wait for an error from any goroutine, then signal we're exiting and wait
 	// for the goroutines to exit.
-	err := <-c.errChan
+	err = <-c.errChan
 	close(exiting)
 	wg.Wait()
 
