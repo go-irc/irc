@@ -52,6 +52,50 @@ var clientFilters = map[string]func(*Client, *Message){
 			c.currentNick = m.Params[0]
 		}
 	},
+	"CAP": func(c *Client, m *Message) {
+		if c.remainingCapResponses <= 0 || len(m.Params) <= 1 {
+			return
+		}
+
+		fmt.Printf("%+v\n", m)
+		switch m.Params[1] {
+		case "LS":
+			for _, key := range strings.Split(m.Trailing(), " ") {
+				cap := c.caps[key]
+				cap.Available = true
+				c.caps[key] = cap
+			}
+			c.remainingCapResponses--
+		case "ACK":
+			for _, key := range strings.Split(m.Trailing(), " ") {
+				cap := c.caps[key]
+				cap.Enabled = true
+				c.caps[key] = cap
+			}
+			c.remainingCapResponses--
+		case "NAK":
+			// If we got a NAK and this REQ was required, we need to bail
+			// with an error.
+			for _, key := range strings.Split(m.Trailing(), " ") {
+				if c.caps[key].Required {
+					c.sendError(fmt.Errorf("CAP %s requested but was rejected", key))
+					return
+				}
+			}
+			c.remainingCapResponses--
+		}
+
+		for key, cap := range c.caps {
+			if cap.Required && !cap.Enabled {
+				c.sendError(fmt.Errorf("CAP %s requested but not accepted", key))
+				return
+			}
+		}
+
+		if c.remainingCapResponses <= 0 {
+			c.Write("CAP END")
+		}
+	},
 }
 
 // ClientConfig is a structure used to configure a Client.
@@ -98,11 +142,12 @@ type Client struct {
 	config ClientConfig
 
 	// Internal state
-	currentNick      string
-	limiter          chan struct{}
-	incomingPongChan chan string
-	errChan          chan error
-	caps             map[string]cap
+	currentNick           string
+	limiter               chan struct{}
+	incomingPongChan      chan string
+	errChan               chan error
+	caps                  map[string]cap
+	remainingCapResponses int
 }
 
 // NewClient creates a client given an io stream and a client config.
@@ -250,72 +295,19 @@ func (c *Client) CapAvailable(capName string) bool {
 	return c.caps[capName].Available
 }
 
-func (c *Client) handleCapHandshake() error {
-	c.CapRequest("multi-prefix", true)
-	c.CapRequest("does-not-exist", false)
+func (c *Client) maybeStartCapHandshake() error {
+	if len(c.caps) <= 0 {
+		return nil
+	}
 
 	c.Write("CAP LS")
-	remainingResponses := 1 // We count the CAP LS response as a normal response
+	c.remainingCapResponses = 1 // We count the CAP LS response as a normal response
 	for key, cap := range c.caps {
 		if cap.Requested {
 			c.Writef("CAP REQ :%s", key)
-			remainingResponses++
+			c.remainingCapResponses++
 		}
 	}
-
-	for remainingResponses > 0 {
-		m, err := c.ReadMessage()
-		if err != nil {
-			return err
-		}
-
-		// Handle CAP messages
-		if m.Command == "CAP" && len(m.Params) > 1 {
-			fmt.Printf("%+v\n", m)
-			switch m.Params[1] {
-			case "LS":
-				for _, key := range strings.Split(m.Trailing(), " ") {
-					cap := c.caps[key]
-					cap.Available = true
-					c.caps[key] = cap
-				}
-				remainingResponses--
-			case "ACK":
-				for _, key := range strings.Split(m.Trailing(), " ") {
-					cap := c.caps[key]
-					cap.Enabled = true
-					c.caps[key] = cap
-				}
-				remainingResponses--
-			case "NAK":
-				// If we got a NAK and this REQ was required, we need to bail
-				// with an error.
-				for _, key := range strings.Split(m.Trailing(), " ") {
-					if c.caps[key].Required {
-						return fmt.Errorf("CAP %s requested but was rejected", key)
-					}
-				}
-				remainingResponses--
-			}
-		}
-
-		// Now that CAP handling is done, also handle the message as normal.
-		if f, ok := clientFilters[m.Command]; ok {
-			f(c, m)
-		}
-
-		if c.config.Handler != nil {
-			c.config.Handler.Handle(c, m)
-		}
-	}
-
-	for key, cap := range c.caps {
-		if cap.Required && !cap.Enabled {
-			return fmt.Errorf("CAP %s requested but not accepted", key)
-		}
-	}
-
-	c.Write("CAP END")
 
 	return nil
 }
@@ -335,17 +327,9 @@ func (c *Client) Run() error {
 		c.Writef("PASS :%s", c.config.Pass)
 	}
 
-	err := c.handleCapHandshake()
-	if err != nil {
-		c.sendError(err)
-		return err
-	}
-
-	// It's more technically correct to start these before sending anything, but
-	// we wait until after the CAP handshake for simplicity so we don't need to
-	// clean up if the CAP handshake fails.
 	c.maybeStartLimiter(&wg, exiting)
 	c.maybeStartPingLoop(&wg, exiting)
+	c.maybeStartCapHandshake()
 
 	c.Writef("NICK :%s", c.config.Nick)
 	c.Writef("USER %s 0.0.0.0 0.0.0.0 :%s", c.config.User, c.config.Name)
@@ -368,7 +352,7 @@ func (c *Client) Run() error {
 
 	// Wait for an error from any goroutine, then signal we're exiting and wait
 	// for the goroutines to exit.
-	err = <-c.errChan
+	err := <-c.errChan
 	close(exiting)
 	wg.Wait()
 
