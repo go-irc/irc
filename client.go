@@ -36,16 +36,6 @@ var clientFilters = map[string]func(*Client, *Message){
 			}
 		}
 	},
-	"PRIVMSG": func(c *Client, m *Message) {
-		// Clean up CTCP stuff so everyone doesn't have to parse it
-		// manually.
-		lastArg := m.Trailing()
-		lastIdx := len(lastArg) - 1
-		if lastIdx > 0 && lastArg[0] == '\x01' && lastArg[lastIdx] == '\x01' {
-			m.Command = "CTCP"
-			m.Params[len(m.Params)-1] = lastArg[1:lastIdx]
-		}
-	},
 	"NICK": func(c *Client, m *Message) {
 		if m.Prefix.Name == c.currentNick && len(m.Params) > 0 {
 			c.currentNick = m.Params[0]
