@@ -145,7 +145,6 @@ type Client struct {
 	limiter               chan struct{}
 	incomingPongChan      chan string
 	errChan               chan error
-	finishedHandshake     bool
 	caps                  map[string]cap
 	remainingCapResponses int
 }
@@ -281,16 +280,11 @@ func (c *Client) sendError(err error) {
 }
 
 // CapRequest allows you to request IRCv3 capabilities from the server during
-// the handshake. This must be called before the handshake completes and so it
-// is recommended that this be called before Run. If the CAP is marked as
-// required, the client will exit if that CAP could not be negotiated during the
-// handshake.
+// the handshake. The behavior is undefined if this is called before the
+// handshake completes so it is recommended that this be called before Run. If
+// the CAP is marked as required, the client will exit if that CAP could not be
+// negotiated during the handshake.
 func (c *Client) CapRequest(capName string, required bool) {
-	if c.finishedHandshake {
-		c.sendError(errors.New("CAP requested after CAP handshake"))
-		return
-	}
-
 	cap := c.caps[capName]
 	cap.Requested = true
 	cap.Required = cap.Required || required
@@ -348,13 +342,12 @@ func (c *Client) Run() error {
 
 	c.maybeStartCapHandshake()
 
-	for {
-		if !c.finishedHandshake && c.remainingCapResponses == 0 {
-			c.Writef("NICK :%s", c.config.Nick)
-			c.Writef("USER %s 0.0.0.0 0.0.0.0 :%s", c.config.User, c.config.Name)
-			c.finishedHandshake = true
-		}
+	// This feels wrong because it results in CAP LS, CAP REQ, NICK, USER, CAP
+	// END, but it works and lets us keep the code a bit simpler.
+	c.Writef("NICK :%s", c.config.Nick)
+	c.Writef("USER %s 0.0.0.0 0.0.0.0 :%s", c.config.User, c.config.Name)
 
+	for {
 		m, err := c.ReadMessage()
 		if err != nil {
 			c.sendError(err)
