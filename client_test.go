@@ -84,6 +84,28 @@ func TestClient(t *testing.T) {
 		SendLine("437\r\n"),
 		ExpectLine("NICK :test_nick_\r\n"),
 	})
+
+	assert.Equal(t, "test_nick_", c.CurrentNick())
+	c = runClientTest(t, config, io.EOF, []TestAction{
+		ExpectLine("PASS :test_pass\r\n"),
+		ExpectLine("NICK :test_nick\r\n"),
+		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
+		SendLine("433\r\n"),
+		ExpectLine("NICK :test_nick_\r\n"),
+		SendLine("001 :test_nick_\r\n"),
+		SendLine("433\r\n"),
+	})
+	assert.Equal(t, "test_nick_", c.CurrentNick())
+
+	c = runClientTest(t, config, io.EOF, []TestAction{
+		ExpectLine("PASS :test_pass\r\n"),
+		ExpectLine("NICK :test_nick\r\n"),
+		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
+		SendLine("437\r\n"),
+		ExpectLine("NICK :test_nick_\r\n"),
+		SendLine("001 :test_nick_\r\n"),
+		SendLine("437\r\n"),
+	})
 	assert.Equal(t, "test_nick_", c.CurrentNick())
 }
 
