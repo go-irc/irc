@@ -53,11 +53,10 @@ var clientFilters = map[string]func(*Client, *Message){
 		}
 	},
 	"CAP": func(c *Client, m *Message) {
-		if c.remainingCapResponses <= 0 || len(m.Params) <= 1 {
+		if c.remainingCapResponses <= 0 || len(m.Params) <= 2 {
 			return
 		}
 
-		fmt.Printf("%+v\n", m)
 		switch m.Params[1] {
 		case "LS":
 			for _, key := range strings.Split(m.Trailing(), " ") {
@@ -85,14 +84,14 @@ var clientFilters = map[string]func(*Client, *Message){
 			c.remainingCapResponses--
 		}
 
-		for key, cap := range c.caps {
-			if cap.Required && !cap.Enabled {
-				c.sendError(fmt.Errorf("CAP %s requested but not accepted", key))
-				return
-			}
-		}
-
 		if c.remainingCapResponses <= 0 {
+			for key, cap := range c.caps {
+				if cap.Required && !cap.Enabled {
+					c.sendError(fmt.Errorf("CAP %s requested but not accepted", key))
+					return
+				}
+			}
+
 			c.Write("CAP END")
 		}
 	},
@@ -146,6 +145,7 @@ type Client struct {
 	limiter               chan struct{}
 	incomingPongChan      chan string
 	errChan               chan error
+	finishedHandshake     bool
 	caps                  map[string]cap
 	remainingCapResponses int
 }
@@ -321,22 +321,27 @@ func (c *Client) Run() error {
 	exiting := make(chan struct{})
 	var wg sync.WaitGroup
 
+	c.maybeStartLimiter(&wg, exiting)
+	c.maybeStartPingLoop(&wg, exiting)
+
 	c.currentNick = c.config.Nick
 
 	if c.config.Pass != "" {
 		c.Writef("PASS :%s", c.config.Pass)
 	}
 
-	c.maybeStartLimiter(&wg, exiting)
-	c.maybeStartPingLoop(&wg, exiting)
 	c.maybeStartCapHandshake()
 
-	c.Writef("NICK :%s", c.config.Nick)
-	c.Writef("USER %s 0.0.0.0 0.0.0.0 :%s", c.config.User, c.config.Name)
-
 	for {
+		if !c.finishedHandshake && c.remainingCapResponses == 0 {
+			c.Writef("NICK :%s", c.config.Nick)
+			c.Writef("USER %s 0.0.0.0 0.0.0.0 :%s", c.config.User, c.config.Name)
+			c.finishedHandshake = true
+		}
+
 		m, err := c.ReadMessage()
 		if err != nil {
+			fmt.Println("READ EOF")
 			c.sendError(err)
 			break
 		}

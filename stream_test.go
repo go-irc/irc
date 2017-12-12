@@ -15,17 +15,29 @@ import (
 type TestAction func(t *testing.T, rw *testReadWriter)
 
 func SendLine(output string) TestAction {
+	return SendLineWithTimeout(output, 1*time.Second)
+}
+
+func SendLineWithTimeout(output string, timeout time.Duration) TestAction {
 	return func(t *testing.T, rw *testReadWriter) {
+		waitChan := time.After(timeout)
+
 		// First we send the message
 		select {
 		case rw.readChan <- output:
+		case <-waitChan:
+			assert.Fail(t, "SendLine timeout on %s", output)
+			return
 		case <-rw.exiting:
 			assert.Fail(t, "Failed to send")
+			return
 		}
 
 		// Now we wait for the buffer to be emptied
 		select {
 		case <-rw.readEmptyChan:
+		case <-waitChan:
+			assert.Fail(t, "SendLine timeout on %s", output)
 		case <-rw.exiting:
 			assert.Fail(t, "Failed to send whole message")
 		}
@@ -152,9 +164,13 @@ func newTestReadWriter(actions []TestAction) *testReadWriter {
 	}
 }
 
-func runClientTest(t *testing.T, cc ClientConfig, expectedErr error, actions []TestAction) *Client {
+func runClientTest(t *testing.T, cc ClientConfig, expectedErr error, setup func(c *Client), actions []TestAction) *Client {
 	rw := newTestReadWriter(actions)
 	c := NewClient(rw, cc)
+
+	if setup != nil {
+		setup(c)
+	}
 
 	go func() {
 		err := c.Run()
