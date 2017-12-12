@@ -52,31 +52,47 @@ var clientFilters = map[string]func(*Client, *Message){
 			c.currentNick = m.Params[0]
 		}
 	},
-}
+	"CAP": func(c *Client, m *Message) {
+		if c.remainingCapResponses <= 0 || len(m.Params) <= 2 {
+			return
+		}
 
-var capHandlers = map[string]func(*Client, *Message){
-	"LS": func(c *Client, m *Message) {
-		for _, key := range strings.Split(m.Trailing(), " ") {
-			cap := c.caps[key]
-			cap.Available = true
-			c.caps[key] = cap
-		}
-	},
-	"ACK": func(c *Client, m *Message) {
-		for _, key := range strings.Split(m.Trailing(), " ") {
-			cap := c.caps[key]
-			cap.Enabled = true
-			c.caps[key] = cap
-		}
-	},
-	"NAK": func(c *Client, m *Message) {
-		// If we got a NAK and this REQ was required, we need to bail
-		// with an error.
-		for _, key := range strings.Split(m.Trailing(), " ") {
-			if c.caps[key].Required {
-				c.sendError(fmt.Errorf("CAP %s requested but was rejected", key))
-				return
+		switch m.Params[1] {
+		case "LS":
+			for _, key := range strings.Split(m.Trailing(), " ") {
+				cap := c.caps[key]
+				cap.Available = true
+				c.caps[key] = cap
 			}
+			c.remainingCapResponses--
+		case "ACK":
+			for _, key := range strings.Split(m.Trailing(), " ") {
+				cap := c.caps[key]
+				cap.Enabled = true
+				c.caps[key] = cap
+			}
+			c.remainingCapResponses--
+		case "NAK":
+			// If we got a NAK and this REQ was required, we need to bail
+			// with an error.
+			for _, key := range strings.Split(m.Trailing(), " ") {
+				if c.caps[key].Required {
+					c.sendError(fmt.Errorf("CAP %s requested but was rejected", key))
+					return
+				}
+			}
+			c.remainingCapResponses--
+		}
+
+		if c.remainingCapResponses <= 0 {
+			for key, cap := range c.caps {
+				if cap.Required && !cap.Enabled {
+					c.sendError(fmt.Errorf("CAP %s requested but not accepted", key))
+					return
+				}
+			}
+
+			c.Write("CAP END")
 		}
 	},
 }
@@ -125,11 +141,12 @@ type Client struct {
 	config ClientConfig
 
 	// Internal state
-	currentNick      string
-	limiter          chan struct{}
-	incomingPongChan chan string
-	errChan          chan error
-	caps             map[string]cap
+	currentNick           string
+	limiter               chan struct{}
+	incomingPongChan      chan string
+	errChan               chan error
+	caps                  map[string]cap
+	remainingCapResponses int
 }
 
 // NewClient creates a client given an io stream and a client config.
@@ -288,45 +305,19 @@ func (c *Client) CapAvailable(capName string) bool {
 	return c.caps[capName].Available
 }
 
-func (c *Client) handleCapHandshake() error {
+func (c *Client) maybeStartCapHandshake() error {
+	if len(c.caps) <= 0 {
+		return nil
+	}
+
 	c.Write("CAP LS")
-	remainingCapResponses := 1 // We count the CAP LS response as a normal response
+	c.remainingCapResponses = 1 // We count the CAP LS response as a normal response
 	for key, cap := range c.caps {
 		if cap.Requested {
 			c.Writef("CAP REQ :%s", key)
-			remainingCapResponses++
+			c.remainingCapResponses++
 		}
 	}
-
-	for remainingCapResponses > 0 {
-		m, err := c.ReadMessage()
-		if err != nil {
-			return err
-		}
-
-		// If we get ERR_UNKNOWNCOMMAND we should bail out of this loop but not
-		// fail, so if only optional CAPs were requested, we can continue.
-		if m.Command == "421" {
-			break
-		}
-
-		if m.Command != "CAP" || len(m.Params) < 3 {
-			return errors.New("Unexpected command inside CAP handshake")
-		}
-
-		if f, ok := capHandlers[m.Params[1]]; ok {
-			f(c, m)
-			remainingCapResponses--
-		}
-	}
-
-	for key, cap := range c.caps {
-		if cap.Required && !cap.Enabled {
-			return fmt.Errorf("CAP %s requested but not accepted", key)
-		}
-	}
-
-	c.Write("CAP END")
 
 	return nil
 }
@@ -349,26 +340,26 @@ func (c *Client) Run() error {
 		c.Writef("PASS :%s", c.config.Pass)
 	}
 
-	if err := c.handleCapHandshake(); err != nil {
-		c.sendError(err)
-	} else {
-		c.Writef("NICK :%s", c.config.Nick)
-		c.Writef("USER %s 0.0.0.0 0.0.0.0 :%s", c.config.User, c.config.Name)
+	c.maybeStartCapHandshake()
 
-		for {
-			m, err := c.ReadMessage()
-			if err != nil {
-				c.sendError(err)
-				break
-			}
+	// This feels wrong because it results in CAP LS, CAP REQ, NICK, USER, CAP
+	// END, but it works and lets us keep the code a bit simpler.
+	c.Writef("NICK :%s", c.config.Nick)
+	c.Writef("USER %s 0.0.0.0 0.0.0.0 :%s", c.config.User, c.config.Name)
 
-			if f, ok := clientFilters[m.Command]; ok {
-				f(c, m)
-			}
+	for {
+		m, err := c.ReadMessage()
+		if err != nil {
+			c.sendError(err)
+			break
+		}
 
-			if c.config.Handler != nil {
-				c.config.Handler.Handle(c, m)
-			}
+		if f, ok := clientFilters[m.Command]; ok {
+			f(c, m)
+		}
+
+		if c.config.Handler != nil {
+			c.config.Handler.Handle(c, m)
 		}
 	}
 
