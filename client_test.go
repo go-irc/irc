@@ -46,11 +46,11 @@ func TestCapReq(t *testing.T) {
 		ExpectLine("PASS :test_pass\r\n"),
 		ExpectLine("CAP LS\r\n"),
 		ExpectLine("CAP REQ :multi-prefix\r\n"),
-		ExpectLine("NICK :test_nick\r\n"),
-		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
 		SendLine("CAP * LS :multi-prefix\r\n"),
 		SendLine("CAP * ACK :multi-prefix\r\n"),
 		ExpectLine("CAP END\r\n"),
+		ExpectLine("NICK :test_nick\r\n"),
+		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
 	})
 	assert.False(t, c.CapEnabled("random-thing"))
 	assert.True(t, c.CapEnabled("multi-prefix"))
@@ -66,12 +66,12 @@ func TestCapReq(t *testing.T) {
 		ExpectLine("PASS :test_pass\r\n"),
 		ExpectLine("CAP LS\r\n"),
 		ExpectLine("CAP REQ :multi-prefix\r\n"),
-		ExpectLine("NICK :test_nick\r\n"),
-		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
 		SendLine("CAP * LS :multi-prefix\r\n"),
 		//SendLine("CAP * ACK\r\n"), // Malformed CAP response
 		SendLine("CAP * ACK :multi-prefix\r\n"),
 		ExpectLine("CAP END\r\n"),
+		ExpectLine("NICK :test_nick\r\n"),
+		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
 	})
 	assert.False(t, c.CapEnabled("random-thing"))
 	assert.True(t, c.CapEnabled("multi-prefix"))
@@ -87,11 +87,11 @@ func TestCapReq(t *testing.T) {
 		ExpectLine("PASS :test_pass\r\n"),
 		ExpectLine("CAP LS\r\n"),
 		ExpectLine("CAP REQ :multi-prefix\r\n"),
-		ExpectLine("NICK :test_nick\r\n"),
-		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
 		SendLine("CAP * LS :multi-prefix\r\n"),
 		SendLine("CAP * ACK :multi-prefix\r\n"),
 		ExpectLine("CAP END\r\n"),
+		ExpectLine("NICK :test_nick\r\n"),
+		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
 		SendLine("CAP * NAK :multi-prefix\r\n"),
 	})
 	assert.False(t, c.CapEnabled("random-thing"))
@@ -107,11 +107,11 @@ func TestCapReq(t *testing.T) {
 		ExpectLine("PASS :test_pass\r\n"),
 		ExpectLine("CAP LS\r\n"),
 		ExpectLine("CAP REQ :multi-prefix\r\n"),
-		ExpectLine("NICK :test_nick\r\n"),
-		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
 		SendLine("CAP * LS :multi-prefix\r\n"),
 		SendLine("CAP * NAK :multi-prefix\r\n"),
 		ExpectLine("CAP END\r\n"),
+		ExpectLine("NICK :test_nick\r\n"),
+		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
 	})
 	assert.False(t, c.CapEnabled("random-thing"))
 	assert.False(t, c.CapEnabled("multi-prefix"))
@@ -126,8 +126,6 @@ func TestCapReq(t *testing.T) {
 		ExpectLine("PASS :test_pass\r\n"),
 		ExpectLine("CAP LS\r\n"),
 		ExpectLine("CAP REQ :multi-prefix\r\n"),
-		ExpectLine("NICK :test_nick\r\n"),
-		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
 		SendLine("CAP * LS :multi-prefix\r\n"),
 		SendLine("CAP * NAK :multi-prefix\r\n"),
 	})
@@ -144,8 +142,6 @@ func TestCapReq(t *testing.T) {
 		ExpectLine("PASS :test_pass\r\n"),
 		ExpectLine("CAP LS\r\n"),
 		ExpectLine("CAP REQ :multi-prefix\r\n"),
-		ExpectLine("NICK :test_nick\r\n"),
-		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
 		SendLine("CAP * LS :multi-prefix\r\n"),
 		SendLine("CAP * ACK :\r\n"),
 	})
@@ -167,12 +163,18 @@ func TestClient(t *testing.T) {
 
 	runClientTest(t, config, io.EOF, nil, []TestAction{
 		ExpectLine("PASS :test_pass\r\n"),
+		ExpectLine("CAP LS\r\n"),
+		SendLine("CAP * LS :\r\n"),
+		ExpectLine("CAP END\r\n"),
 		ExpectLine("NICK :test_nick\r\n"),
 		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
 	})
 
 	runClientTest(t, config, io.EOF, nil, []TestAction{
 		ExpectLine("PASS :test_pass\r\n"),
+		ExpectLine("CAP LS\r\n"),
+		SendLine("CAP * LS :\r\n"),
+		ExpectLine("CAP END\r\n"),
 		ExpectLine("NICK :test_nick\r\n"),
 		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
 		SendLine("PING :hello world\r\n"),
@@ -181,6 +183,9 @@ func TestClient(t *testing.T) {
 
 	c := runClientTest(t, config, io.EOF, nil, []TestAction{
 		ExpectLine("PASS :test_pass\r\n"),
+		ExpectLine("CAP LS\r\n"),
+		SendLine("CAP * LS :\r\n"),
+		ExpectLine("CAP END\r\n"),
 		ExpectLine("NICK :test_nick\r\n"),
 		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
 		SendLine(":test_nick NICK :new_test_nick\r\n"),
@@ -189,6 +194,9 @@ func TestClient(t *testing.T) {
 
 	c = runClientTest(t, config, io.EOF, nil, []TestAction{
 		ExpectLine("PASS :test_pass\r\n"),
+		ExpectLine("CAP LS\r\n"),
+		SendLine("CAP * LS :\r\n"),
+		ExpectLine("CAP END\r\n"),
 		ExpectLine("NICK :test_nick\r\n"),
 		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
 		SendLine("001 :new_test_nick\r\n"),
@@ -197,6 +205,9 @@ func TestClient(t *testing.T) {
 
 	c = runClientTest(t, config, io.EOF, nil, []TestAction{
 		ExpectLine("PASS :test_pass\r\n"),
+		ExpectLine("CAP LS\r\n"),
+		SendLine("CAP * LS :\r\n"),
+		ExpectLine("CAP END\r\n"),
 		ExpectLine("NICK :test_nick\r\n"),
 		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
 		SendLine("433\r\n"),
@@ -206,6 +217,9 @@ func TestClient(t *testing.T) {
 
 	c = runClientTest(t, config, io.EOF, nil, []TestAction{
 		ExpectLine("PASS :test_pass\r\n"),
+		ExpectLine("CAP LS\r\n"),
+		SendLine("CAP * LS :\r\n"),
+		ExpectLine("CAP END\r\n"),
 		ExpectLine("NICK :test_nick\r\n"),
 		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
 		SendLine("437\r\n"),
@@ -234,11 +248,14 @@ func TestSendLimit(t *testing.T) {
 	before := time.Now()
 	runClientTest(t, config, io.EOF, nil, []TestAction{
 		ExpectLine("PASS :test_pass\r\n"),
+		ExpectLine("CAP LS\r\n"),
+		SendLine("CAP * LS :\r\n"),
+		ExpectLine("CAP END\r\n"),
 		ExpectLine("NICK :test_nick\r\n"),
 		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
 		SendLine("001 :hello_world\r\n"),
 	})
-	assert.WithinDuration(t, before, time.Now(), 50*time.Millisecond)
+	assert.WithinDuration(t, before, time.Now(), 60*time.Millisecond)
 
 	// This last test isn't really a test. It's being used to make sure we
 	// hit the branch which handles dropping ticks if the buffered channel is
@@ -250,11 +267,14 @@ func TestSendLimit(t *testing.T) {
 	before = time.Now()
 	runClientTest(t, config, io.EOF, nil, []TestAction{
 		ExpectLine("PASS :test_pass\r\n"),
+		ExpectLine("CAP LS\r\n"),
+		SendLine("CAP * LS :\r\n"),
+		ExpectLine("CAP END\r\n"),
 		ExpectLine("NICK :test_nick\r\n"),
 		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
 		SendLine("001 :hello_world\r\n"),
 	})
-	assert.WithinDuration(t, before, time.Now(), 60*time.Millisecond)
+	assert.WithinDuration(t, before, time.Now(), 80*time.Millisecond)
 }
 
 func TestClientHandler(t *testing.T) {
@@ -272,6 +292,9 @@ func TestClientHandler(t *testing.T) {
 
 	runClientTest(t, config, io.EOF, nil, []TestAction{
 		ExpectLine("PASS :test_pass\r\n"),
+		ExpectLine("CAP LS\r\n"),
+		SendLine("CAP * LS :\r\n"),
+		ExpectLine("CAP END\r\n"),
 		ExpectLine("NICK :test_nick\r\n"),
 		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
 		SendLine("001 :hello_world\r\n"),
@@ -288,6 +311,9 @@ func TestClientHandler(t *testing.T) {
 	// Ensure CTCP messages are parsed
 	runClientTest(t, config, io.EOF, nil, []TestAction{
 		ExpectLine("PASS :test_pass\r\n"),
+		ExpectLine("CAP LS\r\n"),
+		SendLine("CAP * LS :\r\n"),
+		ExpectLine("CAP END\r\n"),
 		ExpectLine("NICK :test_nick\r\n"),
 		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
 		SendLine(":world PRIVMSG :\x01VERSION\x01\r\n"),
@@ -305,6 +331,9 @@ func TestClientHandler(t *testing.T) {
 	// Proper CTCP should start AND end in \x01
 	runClientTest(t, config, io.EOF, nil, []TestAction{
 		ExpectLine("PASS :test_pass\r\n"),
+		ExpectLine("CAP LS\r\n"),
+		SendLine("CAP * LS :\r\n"),
+		ExpectLine("CAP END\r\n"),
 		ExpectLine("NICK :test_nick\r\n"),
 		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
 		SendLine(":world PRIVMSG :\x01VERSION\r\n"),
@@ -351,6 +380,9 @@ func TestPingLoop(t *testing.T) {
 	// Successful ping
 	runClientTest(t, config, io.EOF, nil, []TestAction{
 		ExpectLine("PASS :test_pass\r\n"),
+		ExpectLine("CAP LS\r\n"),
+		SendLine("CAP * LS :\r\n"),
+		ExpectLine("CAP END\r\n"),
 		ExpectLine("NICK :test_nick\r\n"),
 		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
 		SendLine("001 :hello_world\r\n"),
@@ -367,6 +399,9 @@ func TestPingLoop(t *testing.T) {
 	// Ping timeout
 	runClientTest(t, config, errors.New("Ping Timeout"), nil, []TestAction{
 		ExpectLine("PASS :test_pass\r\n"),
+		ExpectLine("CAP LS\r\n"),
+		SendLine("CAP * LS :\r\n"),
+		ExpectLine("CAP END\r\n"),
 		ExpectLine("NICK :test_nick\r\n"),
 		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
 		SendLine("001 :hello_world\r\n"),
@@ -380,6 +415,9 @@ func TestPingLoop(t *testing.T) {
 	// Exit in the middle of handling a ping
 	runClientTest(t, config, io.EOF, nil, []TestAction{
 		ExpectLine("PASS :test_pass\r\n"),
+		ExpectLine("CAP LS\r\n"),
+		SendLine("CAP * LS :\r\n"),
+		ExpectLine("CAP END\r\n"),
 		ExpectLine("NICK :test_nick\r\n"),
 		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
 		SendLine("001 :hello_world\r\n"),
@@ -393,6 +431,9 @@ func TestPingLoop(t *testing.T) {
 	// branch that drops extra pings.
 	runClientTest(t, config, io.EOF, nil, []TestAction{
 		ExpectLine("PASS :test_pass\r\n"),
+		ExpectLine("CAP LS\r\n"),
+		SendLine("CAP * LS :\r\n"),
+		ExpectLine("CAP END\r\n"),
 		ExpectLine("NICK :test_nick\r\n"),
 		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
 		SendLine("001 :hello_world\r\n"),
