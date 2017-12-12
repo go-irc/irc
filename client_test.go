@@ -149,6 +149,13 @@ func TestCapReq(t *testing.T) {
 	assert.False(t, c.CapEnabled("multi-prefix"))
 	assert.False(t, c.CapAvailable("random-thing"))
 	assert.True(t, c.CapAvailable("multi-prefix"))
+
+	runClientTest(t, config, errors.New("CAP requested after CAP handshake"), func(c *Client) {
+		assert.False(t, c.CapAvailable("random-thing"))
+		assert.False(t, c.CapAvailable("multi-prefix"))
+		c.finishedHandshake = true
+		c.CapRequest("multi-prefix", true)
+	}, []TestAction{})
 }
 
 func TestClient(t *testing.T) {

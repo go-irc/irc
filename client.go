@@ -280,17 +280,33 @@ func (c *Client) sendError(err error) {
 	}
 }
 
+// CapRequest allows you to request IRCv3 capabilities from the server during
+// the handshake. This must be called before the handshake completes and so it
+// is recommended that this be called before Run. If the CAP is marked as
+// required, the client will exit if that CAP could not be negotiated during the
+// handshake.
 func (c *Client) CapRequest(capName string, required bool) {
+	if c.finishedHandshake {
+		c.sendError(errors.New("CAP requested after CAP handshake"))
+		return
+	}
+
 	cap := c.caps[capName]
 	cap.Requested = true
 	cap.Required = cap.Required || required
 	c.caps[capName] = cap
 }
 
+// CapEnabled allows you to check if a CAP is enabled for this connection. Note
+// that it will not be populated until after the CAP handshake is done, so it is
+// recommended to wait to check this until after a message like 001.
 func (c *Client) CapEnabled(capName string) bool {
 	return c.caps[capName].Enabled
 }
 
+// CapAvailable allows you to check if a CAP is available on this server. Note
+// that it will not be populated until after the CAP handshake is done, so it is
+// recommended to wait to check this until after a message like 001.
 func (c *Client) CapAvailable(capName string) bool {
 	return c.caps[capName].Available
 }
@@ -341,7 +357,6 @@ func (c *Client) Run() error {
 
 		m, err := c.ReadMessage()
 		if err != nil {
-			fmt.Println("READ EOF")
 			c.sendError(err)
 			break
 		}
