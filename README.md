@@ -95,5 +95,7 @@ Initial release
 
 ### v2
 
-CTCP messages will no longer be rewritten. The decision was made that this
-library should not rewrite messages.
+- CTCP messages will no longer be rewritten. The decision was made that this
+  library should pass through all messages without mangling them.
+- Remove Message.FromChannel as this is not always accurate, while
+  Client.FromChannel should always be accurate.

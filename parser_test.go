@@ -68,19 +68,6 @@ func TestMessageTrailing(t *testing.T) {
 	assert.Equal(t, "", m.Trailing())
 }
 
-func TestMessageFromChan(t *testing.T) {
-	t.Parallel()
-
-	m := MustParseMessage("PRIVMSG #test-msg :hello world")
-	assert.True(t, m.FromChannel(), "Wrong FromChannel value")
-
-	m = MustParseMessage("PRIVMSG bot :hello world")
-	assert.False(t, m.FromChannel(), "Wrong FromChannel value")
-
-	m = MustParseMessage("PING")
-	assert.False(t, m.FromChannel(), "Wrong FromChannel value")
-}
-
 func TestMessageCopy(t *testing.T) {
 	t.Parallel()
 
