@@ -29,7 +29,7 @@ considered stable enough, a new release will be tagged.
 
 As a result of this, there are multiple import locations.
 
-* `gopkg.in/irc.v1` should be used to develop against the commits
+* `gopkg.in/irc.v2` should be used to develop against the commits
   tagged as stable
 * `github.com/go-irc/irc` should be used to develop against the master branch
 
@@ -86,3 +86,14 @@ func main() {
 	}
 }
 ```
+
+## Major Version Changes
+
+### v1
+
+Initial release
+
+### v2
+
+CTCP messages will no longer be rewritten. The decision was made that this
+library should not rewrite messages.

@@ -211,6 +211,28 @@ func TestClient(t *testing.T) {
 		SendLine("437\r\n"),
 		ExpectLine("NICK :test_nick_\r\n"),
 	})
+
+	assert.Equal(t, "test_nick_", c.CurrentNick())
+	c = runClientTest(t, config, io.EOF, nil, []TestAction{
+		ExpectLine("PASS :test_pass\r\n"),
+		ExpectLine("NICK :test_nick\r\n"),
+		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
+		SendLine("433\r\n"),
+		ExpectLine("NICK :test_nick_\r\n"),
+		SendLine("001 :test_nick_\r\n"),
+		SendLine("433\r\n"),
+	})
+	assert.Equal(t, "test_nick_", c.CurrentNick())
+
+	c = runClientTest(t, config, io.EOF, nil, []TestAction{
+		ExpectLine("PASS :test_pass\r\n"),
+		ExpectLine("NICK :test_nick\r\n"),
+		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
+		SendLine("437\r\n"),
+		ExpectLine("NICK :test_nick_\r\n"),
+		SendLine("001 :test_nick_\r\n"),
+		SendLine("437\r\n"),
+	})
 	assert.Equal(t, "test_nick_", c.CurrentNick())
 }
 
@@ -282,39 +304,6 @@ func TestClientHandler(t *testing.T) {
 			Prefix:  &Prefix{},
 			Command: "001",
 			Params:  []string{"hello_world"},
-		},
-	}, handler.Messages())
-
-	// Ensure CTCP messages are parsed
-	runClientTest(t, config, io.EOF, nil, []TestAction{
-		ExpectLine("PASS :test_pass\r\n"),
-		ExpectLine("NICK :test_nick\r\n"),
-		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
-		SendLine(":world PRIVMSG :\x01VERSION\x01\r\n"),
-	})
-	assert.EqualValues(t, []*Message{
-		{
-			Tags:    Tags{},
-			Prefix:  &Prefix{Name: "world"},
-			Command: "CTCP",
-			Params:  []string{"VERSION"},
-		},
-	}, handler.Messages())
-
-	// CTCP Regression test for PR#47
-	// Proper CTCP should start AND end in \x01
-	runClientTest(t, config, io.EOF, nil, []TestAction{
-		ExpectLine("PASS :test_pass\r\n"),
-		ExpectLine("NICK :test_nick\r\n"),
-		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
-		SendLine(":world PRIVMSG :\x01VERSION\r\n"),
-	})
-	assert.EqualValues(t, []*Message{
-		{
-			Tags:    Tags{},
-			Prefix:  &Prefix{Name: "world"},
-			Command: "PRIVMSG",
-			Params:  []string{"\x01VERSION"},
 		},
 	}, handler.Messages())
 }

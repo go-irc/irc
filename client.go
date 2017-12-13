@@ -15,12 +15,23 @@ import (
 var clientFilters = map[string]func(*Client, *Message){
 	"001": func(c *Client, m *Message) {
 		c.currentNick = m.Params[0]
+		c.connected = true
 	},
 	"433": func(c *Client, m *Message) {
+		// We only want to try and handle nick collisions during the initial
+		// handshake.
+		if c.connected {
+			return
+		}
 		c.currentNick = c.currentNick + "_"
 		c.Writef("NICK :%s", c.currentNick)
 	},
 	"437": func(c *Client, m *Message) {
+		// We only want to try and handle nick collisions during the initial
+		// handshake.
+		if c.connected {
+			return
+		}
 		c.currentNick = c.currentNick + "_"
 		c.Writef("NICK :%s", c.currentNick)
 	},
@@ -35,16 +46,6 @@ var clientFilters = map[string]func(*Client, *Message){
 			case c.incomingPongChan <- m.Trailing():
 			default:
 			}
-		}
-	},
-	"PRIVMSG": func(c *Client, m *Message) {
-		// Clean up CTCP stuff so everyone doesn't have to parse it
-		// manually.
-		lastArg := m.Trailing()
-		lastIdx := len(lastArg) - 1
-		if lastIdx > 0 && lastArg[0] == '\x01' && lastArg[lastIdx] == '\x01' {
-			m.Command = "CTCP"
-			m.Params[len(m.Params)-1] = lastArg[1:lastIdx]
 		}
 	},
 	"NICK": func(c *Client, m *Message) {
@@ -147,6 +148,7 @@ type Client struct {
 	errChan               chan error
 	caps                  map[string]cap
 	remainingCapResponses int
+	connected             bool
 }
 
 // NewClient creates a client given an io stream and a client config.
