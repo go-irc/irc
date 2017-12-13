@@ -38,6 +38,7 @@ func TestCapReq(t *testing.T) {
 		Name: "test_name",
 	}
 
+	// Happy path
 	c := runClientTest(t, config, io.EOF, func(c *Client) {
 		assert.False(t, c.CapAvailable("random-thing"))
 		assert.False(t, c.CapAvailable("multi-prefix"))
@@ -57,7 +58,7 @@ func TestCapReq(t *testing.T) {
 	assert.False(t, c.CapAvailable("random-thing"))
 	assert.True(t, c.CapAvailable("multi-prefix"))
 
-	// Malformed CAP responses are ignored
+	// Malformed CAP responses should be ignored
 	c = runClientTest(t, config, io.EOF, func(c *Client) {
 		assert.False(t, c.CapAvailable("random-thing"))
 		assert.False(t, c.CapAvailable("multi-prefix"))
@@ -69,7 +70,14 @@ func TestCapReq(t *testing.T) {
 		ExpectLine("NICK :test_nick\r\n"),
 		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
 		SendLine("CAP * LS :multi-prefix\r\n"),
-		//SendLine("CAP * ACK\r\n"), // Malformed CAP response
+
+		// TODO: There's currently a bug somewhere preventing this from working
+		// as expected without this delay. My current guess is that there's a
+		// bug in flushing the output buffer in tests, but it's odd that it only
+		// shows up here.
+		Delay(10 * time.Millisecond),
+
+		SendLine("CAP * ACK\r\n"), // Malformed CAP response
 		SendLine("CAP * ACK :multi-prefix\r\n"),
 		ExpectLine("CAP END\r\n"),
 	})

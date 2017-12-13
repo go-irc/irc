@@ -26,7 +26,7 @@ func SendLineWithTimeout(output string, timeout time.Duration) TestAction {
 		select {
 		case rw.readChan <- output:
 		case <-waitChan:
-			assert.Fail(t, "SendLine timeout on %s", output)
+			assert.Fail(t, "SendLine send timeout on %s", output)
 			return
 		case <-rw.exiting:
 			assert.Fail(t, "Failed to send")
