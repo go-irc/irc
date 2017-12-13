@@ -14,12 +14,23 @@ import (
 var clientFilters = map[string]func(*Client, *Message){
 	"001": func(c *Client, m *Message) {
 		c.currentNick = m.Params[0]
+		c.connected = true
 	},
 	"433": func(c *Client, m *Message) {
+		// We only want to try and handle nick collisions during the initial
+		// handshake.
+		if c.connected {
+			return
+		}
 		c.currentNick = c.currentNick + "_"
 		c.Writef("NICK :%s", c.currentNick)
 	},
 	"437": func(c *Client, m *Message) {
+		// We only want to try and handle nick collisions during the initial
+		// handshake.
+		if c.connected {
+			return
+		}
 		c.currentNick = c.currentNick + "_"
 		c.Writef("NICK :%s", c.currentNick)
 	},
@@ -87,6 +98,7 @@ type Client struct {
 	limiter          chan struct{}
 	incomingPongChan chan string
 	errChan          chan error
+	connected        bool
 }
 
 // NewClient creates a client given an io stream and a client config.
