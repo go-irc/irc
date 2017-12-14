@@ -175,6 +175,8 @@ func (c *Client) writeCallback(w *Writer, line string) error {
 	return err
 }
 
+// maybeStartLimiter will start a ticker which will limit how quickly messages
+// can be written to the connection if the SendLimit is set in the config.
 func (c *Client) maybeStartLimiter(wg *sync.WaitGroup, exiting chan struct{}) {
 	if c.config.SendLimit == 0 {
 		return
@@ -208,6 +210,8 @@ func (c *Client) maybeStartLimiter(wg *sync.WaitGroup, exiting chan struct{}) {
 	}()
 }
 
+// maybeStartPingLoop will start a goroutine to send out PING messages at the
+// PingFrequency in the config if the frequency is not 0.
 func (c *Client) maybeStartPingLoop(wg *sync.WaitGroup, exiting chan struct{}) {
 	if c.config.PingFrequency <= 0 {
 		return
@@ -274,11 +278,23 @@ func (c *Client) handlePing(timestamp int64, pongChan chan struct{}, wg *sync.Wa
 	}
 }
 
-func (c *Client) sendError(err error) {
-	select {
-	case c.errChan <- err:
-	default:
+// maybeStartCapHandshake will run a CAP LS and all the relevant CAP REQ
+// commands if there are any CAPs requested.
+func (c *Client) maybeStartCapHandshake() error {
+	if len(c.caps) <= 0 {
+		return nil
 	}
+
+	c.Write("CAP LS")
+	c.remainingCapResponses = 1 // We count the CAP LS response as a normal response
+	for key, cap := range c.caps {
+		if cap.Requested {
+			c.Writef("CAP REQ :%s", key)
+			c.remainingCapResponses++
+		}
+	}
+
+	return nil
 }
 
 // CapRequest allows you to request IRCv3 capabilities from the server during
@@ -307,21 +323,11 @@ func (c *Client) CapAvailable(capName string) bool {
 	return c.caps[capName].Available
 }
 
-func (c *Client) maybeStartCapHandshake() error {
-	if len(c.caps) <= 0 {
-		return nil
+func (c *Client) sendError(err error) {
+	select {
+	case c.errChan <- err:
+	default:
 	}
-
-	c.Write("CAP LS")
-	c.remainingCapResponses = 1 // We count the CAP LS response as a normal response
-	for key, cap := range c.caps {
-		if cap.Requested {
-			c.Writef("CAP REQ :%s", key)
-			c.remainingCapResponses++
-		}
-	}
-
-	return nil
 }
 
 // Run starts the main loop for this IRC connection. Note that it may break in
