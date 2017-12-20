@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 	"sync"
 	"time"
 )
@@ -52,6 +53,49 @@ var clientFilters = map[string]func(*Client, *Message){
 			c.currentNick = m.Params[0]
 		}
 	},
+	"CAP": func(c *Client, m *Message) {
+		if c.remainingCapResponses <= 0 || len(m.Params) <= 2 {
+			return
+		}
+
+		switch m.Params[1] {
+		case "LS":
+			for _, key := range strings.Split(m.Trailing(), " ") {
+				cap := c.caps[key]
+				cap.Available = true
+				c.caps[key] = cap
+			}
+			c.remainingCapResponses--
+		case "ACK":
+			for _, key := range strings.Split(m.Trailing(), " ") {
+				cap := c.caps[key]
+				cap.Enabled = true
+				c.caps[key] = cap
+			}
+			c.remainingCapResponses--
+		case "NAK":
+			// If we got a NAK and this REQ was required, we need to bail
+			// with an error.
+			for _, key := range strings.Split(m.Trailing(), " ") {
+				if c.caps[key].Required {
+					c.sendError(fmt.Errorf("CAP %s requested but was rejected", key))
+					return
+				}
+			}
+			c.remainingCapResponses--
+		}
+
+		if c.remainingCapResponses <= 0 {
+			for key, cap := range c.caps {
+				if cap.Required && !cap.Enabled {
+					c.sendError(fmt.Errorf("CAP %s requested but not accepted", key))
+					return
+				}
+			}
+
+			c.Write("CAP END")
+		}
+	},
 }
 
 // ClientConfig is a structure used to configure a Client.
@@ -77,6 +121,20 @@ type ClientConfig struct {
 	Handler Handler
 }
 
+type cap struct {
+	// Requested means that this cap was requested by the user
+	Requested bool
+
+	// Required will be true if this cap is non-optional
+	Required bool
+
+	// Enabled means that this cap was accepted by the server
+	Enabled bool
+
+	// Available means that the server supports this cap
+	Available bool
+}
+
 // Client is a wrapper around Conn which is designed to make common operations
 // much simpler.
 type Client struct {
@@ -84,11 +142,13 @@ type Client struct {
 	config ClientConfig
 
 	// Internal state
-	currentNick      string
-	limiter          chan struct{}
-	incomingPongChan chan string
-	errChan          chan error
-	connected        bool
+	currentNick           string
+	limiter               chan struct{}
+	incomingPongChan      chan string
+	errChan               chan error
+	caps                  map[string]cap
+	remainingCapResponses int
+	connected             bool
 }
 
 // NewClient creates a client given an io stream and a client config.
@@ -97,6 +157,7 @@ func NewClient(rw io.ReadWriter, config ClientConfig) *Client {
 		Conn:    NewConn(rw),
 		config:  config,
 		errChan: make(chan error, 1),
+		caps:    make(map[string]cap),
 	}
 
 	// Replace the writer writeCallback with one of our own
@@ -114,6 +175,8 @@ func (c *Client) writeCallback(w *Writer, line string) error {
 	return err
 }
 
+// maybeStartLimiter will start a ticker which will limit how quickly messages
+// can be written to the connection if the SendLimit is set in the config.
 func (c *Client) maybeStartLimiter(wg *sync.WaitGroup, exiting chan struct{}) {
 	if c.config.SendLimit == 0 {
 		return
@@ -147,6 +210,8 @@ func (c *Client) maybeStartLimiter(wg *sync.WaitGroup, exiting chan struct{}) {
 	}()
 }
 
+// maybeStartPingLoop will start a goroutine to send out PING messages at the
+// PingFrequency in the config if the frequency is not 0.
 func (c *Client) maybeStartPingLoop(wg *sync.WaitGroup, exiting chan struct{}) {
 	if c.config.PingFrequency <= 0 {
 		return
@@ -177,6 +242,7 @@ func (c *Client) maybeStartPingLoop(wg *sync.WaitGroup, exiting chan struct{}) {
 			case data := <-c.incomingPongChan:
 				// Make sure the pong gets routed to the correct
 				// goroutine.
+
 				c := pingHandlers[data]
 				delete(pingHandlers, data)
 
@@ -212,6 +278,51 @@ func (c *Client) handlePing(timestamp int64, pongChan chan struct{}, wg *sync.Wa
 	}
 }
 
+// maybeStartCapHandshake will run a CAP LS and all the relevant CAP REQ
+// commands if there are any CAPs requested.
+func (c *Client) maybeStartCapHandshake() error {
+	if len(c.caps) <= 0 {
+		return nil
+	}
+
+	c.Write("CAP LS")
+	c.remainingCapResponses = 1 // We count the CAP LS response as a normal response
+	for key, cap := range c.caps {
+		if cap.Requested {
+			c.Writef("CAP REQ :%s", key)
+			c.remainingCapResponses++
+		}
+	}
+
+	return nil
+}
+
+// CapRequest allows you to request IRCv3 capabilities from the server during
+// the handshake. The behavior is undefined if this is called before the
+// handshake completes so it is recommended that this be called before Run. If
+// the CAP is marked as required, the client will exit if that CAP could not be
+// negotiated during the handshake.
+func (c *Client) CapRequest(capName string, required bool) {
+	cap := c.caps[capName]
+	cap.Requested = true
+	cap.Required = cap.Required || required
+	c.caps[capName] = cap
+}
+
+// CapEnabled allows you to check if a CAP is enabled for this connection. Note
+// that it will not be populated until after the CAP handshake is done, so it is
+// recommended to wait to check this until after a message like 001.
+func (c *Client) CapEnabled(capName string) bool {
+	return c.caps[capName].Enabled
+}
+
+// CapAvailable allows you to check if a CAP is available on this server. Note
+// that it will not be populated until after the CAP handshake is done, so it is
+// recommended to wait to check this until after a message like 001.
+func (c *Client) CapAvailable(capName string) bool {
+	return c.caps[capName].Available
+}
+
 func (c *Client) sendError(err error) {
 	select {
 	case c.errChan <- err:
@@ -237,6 +348,10 @@ func (c *Client) Run() error {
 		c.Writef("PASS :%s", c.config.Pass)
 	}
 
+	c.maybeStartCapHandshake()
+
+	// This feels wrong because it results in CAP LS, CAP REQ, NICK, USER, CAP
+	// END, but it works and lets us keep the code a bit simpler.
 	c.Writef("NICK :%s", c.config.Nick)
 	c.Writef("USER %s 0.0.0.0 0.0.0.0 :%s", c.config.User, c.config.Name)
 
