@@ -1,6 +1,7 @@
 package irc
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -357,6 +358,12 @@ func (c *Client) startReadLoop(wg *sync.WaitGroup) {
 // strange and unexpected ways if it is called again before the first connection
 // exits.
 func (c *Client) Run() error {
+	return c.RunContext(context.TODO())
+}
+
+// RunContext is the same as Run but a context.Context can be passed in for
+// cancelation.
+func (c *Client) RunContext(ctx context.Context) error {
 	// exiting is used by the main goroutine here to ensure any sub-goroutines
 	// get closed when exiting.
 	exiting := make(chan struct{})
@@ -382,9 +389,14 @@ func (c *Client) Run() error {
 	// messages.
 	c.startReadLoop(&wg)
 
-	// Wait for an error from any goroutine, then signal we're exiting and wait
-	// for the goroutines to exit.
-	err := <-c.errChan
+	// Wait for an error from any goroutine or for the context to time out, then
+	// signal we're exiting and wait for the goroutines to exit.
+	var err error
+	select {
+	case err = <-c.errChan:
+	case <-ctx.Done():
+	}
+
 	close(exiting)
 	wg.Wait()
 
