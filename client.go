@@ -280,9 +280,9 @@ func (c *Client) handlePing(timestamp int64, pongChan chan struct{}, wg *sync.Wa
 
 // maybeStartCapHandshake will run a CAP LS and all the relevant CAP REQ
 // commands if there are any CAPs requested.
-func (c *Client) maybeStartCapHandshake() error {
+func (c *Client) maybeStartCapHandshake() {
 	if len(c.caps) <= 0 {
-		return nil
+		return
 	}
 
 	c.Write("CAP LS")
@@ -293,8 +293,6 @@ func (c *Client) maybeStartCapHandshake() error {
 			c.remainingCapResponses++
 		}
 	}
-
-	return nil
 }
 
 // CapRequest allows you to request IRCv3 capabilities from the server during
@@ -330,6 +328,31 @@ func (c *Client) sendError(err error) {
 	}
 }
 
+func (c *Client) startReadLoop(wg *sync.WaitGroup) {
+	wg.Add(1)
+
+	go func() {
+		defer wg.Done()
+
+		for {
+			m, err := c.ReadMessage()
+			if err != nil {
+				c.sendError(err)
+				break
+			}
+
+			if f, ok := clientFilters[m.Command]; ok {
+				f(c, m)
+			}
+
+			if c.config.Handler != nil {
+				c.config.Handler.Handle(c, m)
+			}
+		}
+
+	}()
+}
+
 // Run starts the main loop for this IRC connection. Note that it may break in
 // strange and unexpected ways if it is called again before the first connection
 // exits.
@@ -355,21 +378,9 @@ func (c *Client) Run() error {
 	c.Writef("NICK :%s", c.config.Nick)
 	c.Writef("USER %s 0.0.0.0 0.0.0.0 :%s", c.config.User, c.config.Name)
 
-	for {
-		m, err := c.ReadMessage()
-		if err != nil {
-			c.sendError(err)
-			break
-		}
-
-		if f, ok := clientFilters[m.Command]; ok {
-			f(c, m)
-		}
-
-		if c.config.Handler != nil {
-			c.config.Handler.Handle(c, m)
-		}
-	}
+	// Now that the handshake is pretty much done, we can start listening for
+	// messages.
+	c.startReadLoop(&wg)
 
 	// Wait for an error from any goroutine, then signal we're exiting and wait
 	// for the goroutines to exit.
