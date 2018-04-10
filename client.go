@@ -173,6 +173,9 @@ func (c *Client) writeCallback(w *Writer, line string) error {
 	}
 
 	_, err := w.writer.Write([]byte(line + "\r\n"))
+	if err != nil {
+		c.sendError(err)
+	}
 	return err
 }
 
@@ -260,11 +263,7 @@ func (c *Client) maybeStartPingLoop(wg *sync.WaitGroup, exiting chan struct{}) {
 func (c *Client) handlePing(timestamp int64, pongChan chan struct{}, wg *sync.WaitGroup, exiting chan struct{}) {
 	defer wg.Done()
 
-	err := c.Writef("PING :%d", timestamp)
-	if err != nil {
-		c.sendError(err)
-		return
-	}
+	c.Writef("PING :%d", timestamp)
 
 	timer := time.NewTimer(c.config.PingTimeout)
 	defer timer.Stop()
