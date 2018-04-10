@@ -99,27 +99,24 @@ func QueueReadError(err error) TestAction {
 
 func QueueWriteError(err error) TestAction {
 	return func(t *testing.T, rw *testReadWriter) {
-		assert.Nil(t, rw.queuedWriteError, "Tried to queue a second write error")
-		rw.queuedWriteError = err
+		select {
+		case rw.writeErrorChan <- err:
+		default:
+			assert.Fail(t, "Tried to queue a second write error")
+		}
 	}
 }
 
 type testReadWriter struct {
-	actions []TestAction
-
-	// It's worth noting that there's queuedWriteError and readErrorChan. We
-	// don't actually need a channel for the write errors because it's more
-	// deterministic when that's called. However because reads happen in a
-	// readLoop goroutine, this needs to be possible to trigger in the middle of
-	// a read.
-	queuedWriteError error
-	writeChan        chan string
-	readErrorChan    chan error
-	readChan         chan string
-	readEmptyChan    chan struct{}
-	exiting          chan struct{}
-	clientDone       chan struct{}
-	serverBuffer     bytes.Buffer
+	actions        []TestAction
+	writeErrorChan chan error
+	writeChan      chan string
+	readErrorChan  chan error
+	readChan       chan string
+	readEmptyChan  chan struct{}
+	exiting        chan struct{}
+	clientDone     chan struct{}
+	serverBuffer   bytes.Buffer
 }
 
 func (rw *testReadWriter) maybeBroadcastEmpty() {
@@ -169,10 +166,10 @@ func (rw *testReadWriter) Read(buf []byte) (int, error) {
 }
 
 func (rw *testReadWriter) Write(buf []byte) (int, error) {
-	if rw.queuedWriteError != nil {
-		err := rw.queuedWriteError
-		rw.queuedWriteError = nil
+	select {
+	case err := <-rw.writeErrorChan:
 		return 0, err
+	default:
 	}
 
 	// Write to server. We can cheat with this because we know things
@@ -187,13 +184,14 @@ func (rw *testReadWriter) Write(buf []byte) (int, error) {
 
 func newTestReadWriter(actions []TestAction) *testReadWriter {
 	return &testReadWriter{
-		actions:       actions,
-		writeChan:     make(chan string),
-		readErrorChan: make(chan error, 1),
-		readChan:      make(chan string),
-		readEmptyChan: make(chan struct{}, 1),
-		exiting:       make(chan struct{}),
-		clientDone:    make(chan struct{}),
+		actions:        actions,
+		writeErrorChan: make(chan error, 1),
+		writeChan:      make(chan string),
+		readErrorChan:  make(chan error, 1),
+		readChan:       make(chan string),
+		readEmptyChan:  make(chan struct{}, 1),
+		exiting:        make(chan struct{}),
+		clientDone:     make(chan struct{}),
 	}
 }
 
