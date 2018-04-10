@@ -5,99 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"strings"
 	"sync"
 	"time"
 )
-
-// clientFilters are pre-processing which happens for certain message
-// types. These were moved from below to keep the complexity of each
-// component down.
-var clientFilters = map[string]func(*Client, *Message){
-	"001": func(c *Client, m *Message) {
-		c.currentNick = m.Params[0]
-		c.connected = true
-	},
-	"433": func(c *Client, m *Message) {
-		// We only want to try and handle nick collisions during the initial
-		// handshake.
-		if c.connected {
-			return
-		}
-		c.currentNick = c.currentNick + "_"
-		c.Writef("NICK :%s", c.currentNick)
-	},
-	"437": func(c *Client, m *Message) {
-		// We only want to try and handle nick collisions during the initial
-		// handshake.
-		if c.connected {
-			return
-		}
-		c.currentNick = c.currentNick + "_"
-		c.Writef("NICK :%s", c.currentNick)
-	},
-	"PING": func(c *Client, m *Message) {
-		reply := m.Copy()
-		reply.Command = "PONG"
-		c.WriteMessage(reply)
-	},
-	"PONG": func(c *Client, m *Message) {
-		if c.incomingPongChan != nil {
-			select {
-			case c.incomingPongChan <- m.Trailing():
-			default:
-			}
-		}
-	},
-	"NICK": func(c *Client, m *Message) {
-		if m.Prefix.Name == c.currentNick && len(m.Params) > 0 {
-			c.currentNick = m.Params[0]
-		}
-	},
-	"CAP": func(c *Client, m *Message) {
-		if c.remainingCapResponses <= 0 || len(m.Params) <= 2 {
-			return
-		}
-
-		switch m.Params[1] {
-		case "LS":
-			for _, key := range strings.Split(m.Trailing(), " ") {
-				cap := c.caps[key]
-				cap.Available = true
-				c.caps[key] = cap
-			}
-			c.remainingCapResponses--
-		case "ACK":
-			for _, key := range strings.Split(m.Trailing(), " ") {
-				cap := c.caps[key]
-				cap.Enabled = true
-				c.caps[key] = cap
-			}
-			c.remainingCapResponses--
-		case "NAK":
-			// If we got a NAK and this REQ was required, we need to bail
-			// with an error.
-			for _, key := range strings.Split(m.Trailing(), " ") {
-				if c.caps[key].Required {
-					c.sendError(fmt.Errorf("CAP %s requested but was rejected", key))
-					return
-				}
-			}
-			c.remainingCapResponses--
-		}
-
-		if c.remainingCapResponses <= 0 {
-			for key, cap := range c.caps {
-				if cap.Required && !cap.Enabled {
-					c.sendError(fmt.Errorf("CAP %s requested but not accepted", key))
-					return
-				}
-			}
-
-			c.Write("CAP END")
-		}
-	},
-}
 
 // ClientConfig is a structure used to configure a Client.
 type ClientConfig struct {
