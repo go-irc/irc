@@ -22,6 +22,9 @@ functions and other additions will most likely not result in a major
 version increase unless they break the API. This library aims to
 follow the semver recommendations mentioned on gopkg.in.
 
+Due to complications in how to support x/net/context vs the built-in context
+package, only go 1.7+ is officially supported.
+
 ## Import Paths
 
 All development happens on the `master` branch and when features are
