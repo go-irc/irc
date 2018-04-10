@@ -56,6 +56,9 @@ func handlePong(c *Client, m *Message) {
 		select {
 		case c.incomingPongChan <- m.Trailing():
 		default:
+			// Note that this return isn't really needed, but it helps some code
+			// coverage tools actually see this line.
+			return
 		}
 	}
 }
