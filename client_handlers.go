@@ -20,11 +20,24 @@ var clientFilters = map[string]clientFilter{
 	"CAP":  handleCap,
 }
 
+// From rfc2812 section 5.1 (Command responses)
+//
+// 001    RPL_WELCOME
+//        "Welcome to the Internet Relay Network
+//        <nick>!<user>@<host>"
 func handle001(c *Client, m *Message) {
 	c.currentNick = m.Params[0]
 	c.connected = true
 }
 
+// From rfc2812 section 5.2 (Error Replies)
+//
+// 433    ERR_NICKNAMEINUSE
+//        "<nick> :Nickname is already in use"
+//
+// - Returned when a NICK message is processed that results
+//   in an attempt to change to a currently existing
+//   nickname.
 func handle433(c *Client, m *Message) {
 	// We only want to try and handle nick collisions during the initial
 	// handshake.
@@ -35,6 +48,17 @@ func handle433(c *Client, m *Message) {
 	c.Writef("NICK :%s", c.currentNick)
 }
 
+// From rfc2812 section 5.2 (Error Replies)
+//
+// 437    ERR_UNAVAILRESOURCE
+//        "<nick/channel> :Nick/channel is temporarily unavailable"
+//
+// - Returned by a server to a user trying to join a channel
+//   currently blocked by the channel delay mechanism.
+//
+// - Returned by a server to a user trying to change nickname
+//   when the desired nickname is blocked by the nick delay
+//   mechanism.
 func handle437(c *Client, m *Message) {
 	// We only want to try and handle nick collisions during the initial
 	// handshake.
