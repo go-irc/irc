@@ -87,16 +87,36 @@ func Delay(delay time.Duration) TestAction {
 	}
 }
 
+func QueueReadError(err error) TestAction {
+	return func(t *testing.T, rw *testReadWriter) {
+		select {
+		case rw.readErrorChan <- err:
+		default:
+			assert.Fail(t, "Tried to queue a second read error")
+		}
+	}
+}
+
+func QueueWriteError(err error) TestAction {
+	return func(t *testing.T, rw *testReadWriter) {
+		select {
+		case rw.writeErrorChan <- err:
+		default:
+			assert.Fail(t, "Tried to queue a second write error")
+		}
+	}
+}
+
 type testReadWriter struct {
-	actions          []TestAction
-	queuedWriteError error
-	writeChan        chan string
-	queuedReadError  error
-	readChan         chan string
-	readEmptyChan    chan struct{}
-	exiting          chan struct{}
-	clientDone       chan struct{}
-	serverBuffer     bytes.Buffer
+	actions        []TestAction
+	writeErrorChan chan error
+	writeChan      chan string
+	readErrorChan  chan error
+	readChan       chan string
+	readEmptyChan  chan struct{}
+	exiting        chan struct{}
+	clientDone     chan struct{}
+	serverBuffer   bytes.Buffer
 }
 
 func (rw *testReadWriter) maybeBroadcastEmpty() {
@@ -109,10 +129,11 @@ func (rw *testReadWriter) maybeBroadcastEmpty() {
 }
 
 func (rw *testReadWriter) Read(buf []byte) (int, error) {
-	if rw.queuedReadError != nil {
-		err := rw.queuedReadError
-		rw.queuedReadError = nil
+	// Check for a read error first
+	select {
+	case err := <-rw.readErrorChan:
 		return 0, err
+	default:
 	}
 
 	// If there's data left in the buffer, we want to use that first.
@@ -125,10 +146,12 @@ func (rw *testReadWriter) Read(buf []byte) (int, error) {
 		return s, err
 	}
 
-	// Read from server. We're either waiting for this whole test to
-	// finish or for data to come in from the server buffer. We expect
-	// only one read to be happening at once.
+	// Read from server. We're waiting for this whole test to finish, data to
+	// come in from the server buffer, or for an error. We expect only one read
+	// to be happening at once.
 	select {
+	case err := <-rw.readErrorChan:
+		return 0, err
 	case data := <-rw.readChan:
 		rw.serverBuffer.WriteString(data)
 		s, err := rw.serverBuffer.Read(buf)
@@ -143,10 +166,10 @@ func (rw *testReadWriter) Read(buf []byte) (int, error) {
 }
 
 func (rw *testReadWriter) Write(buf []byte) (int, error) {
-	if rw.queuedWriteError != nil {
-		err := rw.queuedWriteError
-		rw.queuedWriteError = nil
+	select {
+	case err := <-rw.writeErrorChan:
 		return 0, err
+	default:
 	}
 
 	// Write to server. We can cheat with this because we know things
@@ -161,12 +184,14 @@ func (rw *testReadWriter) Write(buf []byte) (int, error) {
 
 func newTestReadWriter(actions []TestAction) *testReadWriter {
 	return &testReadWriter{
-		actions:       actions,
-		writeChan:     make(chan string),
-		readChan:      make(chan string),
-		readEmptyChan: make(chan struct{}, 1),
-		exiting:       make(chan struct{}),
-		clientDone:    make(chan struct{}),
+		actions:        actions,
+		writeErrorChan: make(chan error, 1),
+		writeChan:      make(chan string),
+		readErrorChan:  make(chan error, 1),
+		readChan:       make(chan string),
+		readEmptyChan:  make(chan struct{}, 1),
+		exiting:        make(chan struct{}),
+		clientDone:     make(chan struct{}),
 	}
 }
 
@@ -197,8 +222,10 @@ func runTest(t *testing.T, rw *testReadWriter, actions []TestAction) {
 
 	// TODO: Make sure there are no more incoming messages
 
-	// Ask everything to shut down and wait for the client to stop.
+	// Ask everything to shut down
 	close(rw.exiting)
+
+	// Wait for the client to stop
 	select {
 	case <-rw.clientDone:
 	case <-time.After(1 * time.Second):
