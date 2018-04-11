@@ -113,6 +113,7 @@ func TestMessageCopy(t *testing.T) {
 
 type MsgSplitTests struct {
 	Tests []struct {
+		Desc  string
 		Input string
 		Atoms struct {
 			Source *string
@@ -135,15 +136,15 @@ func TestMsgSplit(t *testing.T) {
 
 	for _, test := range splitTests.Tests {
 		msg, err := ParseMessage(test.Input)
-		assert.NoError(t, err, "Failed to parse: %s (%s)", test.Input, err)
+		assert.NoError(t, err, "%s: Failed to parse: %s (%s)", test.Desc, test.Input, err)
 
 		assert.Equal(t,
 			strings.ToUpper(test.Atoms.Verb), msg.Command,
-			"Wrong command for input: %s", test.Input,
+			"%s: Wrong command for input: %s", test.Desc, test.Input,
 		)
 		assert.Equal(t,
 			test.Atoms.Params, msg.Params,
-			"Wrong params for input: %s", test.Input,
+			"%s: Wrong params for input: %s", test.Desc, test.Input,
 		)
 
 		if test.Atoms.Source != nil {
@@ -152,16 +153,17 @@ func TestMsgSplit(t *testing.T) {
 
 		assert.Equal(t,
 			len(test.Atoms.Tags), len(msg.Tags),
-			"Wrong number of tags",
+			"%s: Wrong number of tags",
+			test.Desc,
 		)
 
 		for k, v := range test.Atoms.Tags {
 			tag, ok := msg.GetTag(k)
 			assert.True(t, ok, "Missing tag")
 			if v == nil {
-				assert.EqualValues(t, "", tag, "Tag differs")
+				assert.EqualValues(t, "", tag, "%s: Tag %q differs: %s != \"\"", test.Desc, k, tag)
 			} else {
-				assert.EqualValues(t, v, tag, "Tag differs")
+				assert.EqualValues(t, v, tag, "%s: Tag %q differs: %s != %s", test.Desc, k, v, tag)
 			}
 		}
 	}
@@ -169,6 +171,7 @@ func TestMsgSplit(t *testing.T) {
 
 type MsgJoinTests struct {
 	Tests []struct {
+		Desc  string
 		Atoms struct {
 			Source string
 			Verb   string
@@ -211,6 +214,7 @@ func TestMsgJoin(t *testing.T) {
 
 type UserhostSplitTests struct {
 	Tests []struct {
+		Desc   string
 		Source string
 		Atoms  struct {
 			Nick string
@@ -235,15 +239,15 @@ func TestUserhostSplit(t *testing.T) {
 
 		assert.Equal(t,
 			test.Atoms.Nick, prefix.Name,
-			"Name did not match for input: %q", test.Source,
+			"%s: Name did not match for input: %q", test.Desc, test.Source,
 		)
 		assert.Equal(t,
 			test.Atoms.User, prefix.User,
-			"User did not match for input: %q", test.Source,
+			"%s: User did not match for input: %q", test.Desc, test.Source,
 		)
 		assert.Equal(t,
 			test.Atoms.Host, prefix.Host,
-			"Host did not match for input: %q", test.Source,
+			"%s: Host did not match for input: %q", test.Desc, test.Source,
 		)
 	}
 }

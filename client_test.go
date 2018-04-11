@@ -388,20 +388,14 @@ func TestPingLoop(t *testing.T) {
 
 	// This one is just for coverage, so we know we're hitting the
 	// branch that drops extra pings.
-	runClientTest(t, config, io.EOF, nil, []TestAction{
+	runClientTest(t, config, io.EOF, func(c *Client) {
+		c.incomingPongChan = make(chan string)
+		handlePong(c, MustParseMessage("PONG :hello 1"))
+	}, []TestAction{
 		ExpectLine("PASS :test_pass\r\n"),
 		ExpectLine("NICK :test_nick\r\n"),
 		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
 		SendLine("001 :hello_world\r\n"),
-
-		// It's a buffered channel of 5, so we want to send at least 6 of them
-		SendLine("PONG :hello 1\r\n"),
-		SendLine("PONG :hello 2\r\n"),
-		SendLine("PONG :hello 3\r\n"),
-		SendLine("PONG :hello 4\r\n"),
-		SendLine("PONG :hello 5\r\n"),
-		SendLine("PONG :hello 6\r\n"),
-		SendLine("PONG :hello 7\r\n"),
 	})
 
 	// Successful ping with write error
