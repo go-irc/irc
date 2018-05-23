@@ -1,1 +1,1 @@
-module github.com/go-irc/irc/v2
+module "github.com/go-irc/irc/v2"
