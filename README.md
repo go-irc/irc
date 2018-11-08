@@ -102,3 +102,7 @@ Initial release
   library should pass through all messages without mangling them.
 - Remove Message.FromChannel as this is not always accurate, while
   Client.FromChannel should always be accurate.
+
+### v3
+
+- Import path changed back to `github.com/go-irc/irc` without the version suffix.
