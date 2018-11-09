@@ -1,1 +1,1 @@
-module github.com/go-irc/irc
+module gopkg.in/irc.v3
