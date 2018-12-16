@@ -50,7 +50,7 @@ import (
 	"log"
 	"net"
 
-	"github.com/belak/irc"
+	"github.com/go-irc/irc"
 )
 
 func main() {
@@ -68,7 +68,7 @@ func main() {
 			if m.Command == "001" {
 				// 001 is a welcome event, so we join channels there
 				c.Write("JOIN #bot-test-chan")
-			} else if m.Command == "PRIVMSG" && m.FromChannel() {
+			} else if m.Command == "PRIVMSG" && c.FromChannel(m) {
 				// Create a handler on all messages.
 				c.WriteMessage(&irc.Message{
 					Command: "PRIVMSG",
