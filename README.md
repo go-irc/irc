@@ -30,11 +30,11 @@ package, only go 1.7+ is officially supported.
 All development happens on the `master` branch and when features are
 considered stable enough, a new release will be tagged.
 
-As a result of this, there are multiple import locations.
-
-* `gopkg.in/irc.v2` should be used to develop against the commits
+* `gopkg.in/irc.v3` should be used to develop against the commits
   tagged as stable
-* `github.com/go-irc/irc` should be used to develop against the master branch
+* In previous versions, `github.com/go-irc/irc` used to be able to be
+  used to develop against the master branch but module support in go
+  seems to have broken this.
 
 ## Development
 
@@ -50,7 +50,7 @@ import (
 	"log"
 	"net"
 
-	"github.com/go-irc/irc"
+	"gopkg.in/irc.v3"
 )
 
 func main() {
@@ -105,4 +105,4 @@ Initial release
 
 ### v3
 
-- Import path changed back to `github.com/go-irc/irc` without the version suffix.
+- Import path changed back to `gopkg.in/irc.v3` without the version suffix.
