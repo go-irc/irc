@@ -10,7 +10,7 @@ print('package irc')
 print()
 print('const (')
 
-def print_item(idx, item, **kwargs):
+def print_item(idx, item, obsolete=None, **kwargs):
     if idx in used: return
 
     origin = item.get('origin', '')
@@ -19,8 +19,9 @@ def print_item(idx, item, **kwargs):
     if origin_name:
         if not origin or origin not in origin_name: return
 
+    kwargs['obsolete'] = obsolete
     for k, v in kwargs.items():
-        if item.get(k, '') != v: return
+        if item.get(k) != v: return
 
     # Mark seen
     used.add(idx)
@@ -56,6 +57,12 @@ print('// there are way too many conflicts to deal with.')
 print('/*')
 for index, item in enumerate(vals):
     print_item(index, item)
+print('*/')
+print()
+print('// Obsolete')
+print('/*')
+for index, item in enumerate(vals):
+    print_item(index, item, obsolete=True)
 print('*/')
 
 print(')')

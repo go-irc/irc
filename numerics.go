@@ -21,9 +21,6 @@ const (
 	RPL_STATSYLINE        = "218"
 	RPL_ENDOFSTATS        = "219"
 	RPL_UMODEIS           = "221"
-	RPL_SERVICEINFO       = "231"
-	RPL_ENDOFSERVICES     = "232"
-	RPL_SERVICE           = "233"
 	RPL_STATSLLINE        = "241"
 	RPL_STATSUPTIME       = "242"
 	RPL_STATSOLINE        = "243"
@@ -49,24 +46,18 @@ const (
 	RPL_WHOISOPERATOR     = "313"
 	RPL_WHOWASUSER        = "314"
 	RPL_ENDOFWHO          = "315"
-	RPL_WHOISCHANOP       = "316"
 	RPL_WHOISIDLE         = "317"
 	RPL_ENDOFWHOIS        = "318"
 	RPL_WHOISCHANNELS     = "319"
-	RPL_LISTSTART         = "321"
 	RPL_LIST              = "322"
 	RPL_LISTEND           = "323"
 	RPL_CHANNELMODEIS     = "324"
 	RPL_NOTOPIC           = "331"
 	RPL_TOPIC             = "332"
 	RPL_INVITING          = "341"
-	RPL_SUMMONING         = "342"
 	RPL_VERSION           = "351"
 	RPL_WHOREPLY          = "352"
 	RPL_NAMREPLY          = "353"
-	RPL_KILLDONE          = "361"
-	RPL_CLOSING           = "362"
-	RPL_CLOSEEND          = "363"
 	RPL_LINKS             = "364"
 	RPL_ENDOFLINKS        = "365"
 	RPL_ENDOFNAMES        = "366"
@@ -75,13 +66,11 @@ const (
 	RPL_ENDOFWHOWAS       = "369"
 	RPL_INFO              = "371"
 	RPL_MOTD              = "372"
-	RPL_INFOSTART         = "373"
 	RPL_ENDOFINFO         = "374"
 	RPL_MOTDSTART         = "375"
 	RPL_ENDOFMOTD         = "376"
 	RPL_YOUREOPER         = "381"
 	RPL_REHASHING         = "382"
-	RPL_MYPORTIS          = "384"
 	RPL_TIME              = "391"
 	RPL_USERSSTART        = "392"
 	RPL_USERS             = "393"
@@ -119,7 +108,6 @@ const (
 	ERR_NOPERMFORHOST     = "463"
 	ERR_PASSWDMISMATCH    = "464"
 	ERR_YOUREBANNEDCREEP  = "465"
-	ERR_YOUWILLBEBANNED   = "466"
 	ERR_KEYSET            = "467"
 	ERR_CHANNELISFULL     = "471"
 	ERR_UNKNOWNMODE       = "472"
@@ -130,7 +118,6 @@ const (
 	ERR_CHANOPRIVSNEEDED  = "482"
 	ERR_CANTKILLSERVER    = "483"
 	ERR_NOOPERHOST        = "491"
-	ERR_NOSERVICEHOST     = "492"
 	ERR_UMODEUNKNOWNFLAG  = "501"
 	ERR_USERSDONTMATCH    = "502"
 
@@ -139,14 +126,11 @@ const (
 	RPL_YOURHOST         = "002"
 	RPL_CREATED          = "003"
 	RPL_MYINFO           = "004"
-	RPL_BOUNCE           = "005"
 	RPL_TRACESERVICE     = "207"
 	RPL_TRACECLASS       = "209"
-	RPL_TRACERECONNECT   = "210"
 	RPL_SERVLIST         = "234"
 	RPL_SERVLISTEND      = "235"
 	RPL_STATSVLINE       = "240"
-	RPL_STATSPING        = "246"
 	RPL_STATSBLINE       = "247"
 	RPL_STATSDLINE       = "250"
 	RPL_TRACEEND         = "262"
@@ -192,7 +176,6 @@ const (
 		RPL_SNOMASK              = "008" // ircu
 		RPL_STATMEMTOT           = "009" // ircu
 		RPL_BOUNCE               = "010"
-		RPL_STATMEM              = "010" // ircu
 		RPL_YOURCOOKIE           = "014" // Hybrid?
 		RPL_MAP                  = "015" // ircu
 		RPL_MAPMORE              = "016" // ircu
@@ -225,7 +208,6 @@ const (
 		RPL_STATSTLINE           = "224" // Unreal
 		RPL_STATSDLINE           = "225" // Hybrid
 		RPL_STATSCLONE           = "225" // Bahamut
-		RPL_STATSZLINE           = "225" // Bahamut
 		RPL_STATSELINE           = "225" // Unreal
 		RPL_STATSCOUNT           = "226" // Bahamut
 		RPL_STATSALINE           = "226" // Hybrid
@@ -263,7 +245,6 @@ const (
 		RPL_NETSTAT              = "268" // aircd
 		RPL_END_NETSTAT          = "269" // aircd
 		RPL_PRIVS                = "270" // ircu
-		RPL_MAPUSERS             = "270" // InspIRCd 2.0
 		RPL_SILELIST             = "271" // ircu
 		RPL_ENDOFSILELIST        = "272" // ircu
 		RPL_NOTIFY               = "273" // aircd
@@ -273,9 +254,6 @@ const (
 		RPL_USINGSSL             = "275" // Bahamut
 		RPL_WHOISCERTFP          = "276" // oftc-hybrid
 		RPL_STATSRLINE           = "276" // ircu
-		RPL_VCHANEXIST           = "276" // Hybrid
-		RPL_VCHANLIST            = "277" // Hybrid
-		RPL_VCHANHELP            = "278" // Hybrid 7.0?
 		RPL_GLIST                = "280" // ircu
 		RPL_ENDOFGLIST           = "281" // ircu
 		RPL_ACCEPTLIST           = "281"
@@ -333,7 +311,6 @@ const (
 		RPL_WHOISSPECIAL         = "320" // Unreal
 		RPL_CHANNELPASSIS        = "325"
 		RPL_WHOISWEBIRC          = "325" // Nefarious
-		RPL_CHANNELMLOCKIS       = "325" // sorircd
 		RPL_NOCHANPASS           = "326"
 		RPL_CHPASSUNKNOWN        = "327"
 		RPL_WHOISHOST            = "327" // rusnet-ircd
@@ -366,22 +343,17 @@ const (
 		RPL_MAP                  = "357" // AustHex
 		RPL_MAPMORE              = "358" // AustHex
 		RPL_MAPEND               = "359" // AustHex
-		RPL_WHOWASREAL           = "360" // Charybdis
 		RPL_KICKEXPIRED          = "377" // aircd
-		RPL_SPAM                 = "377" // AustHex
 		RPL_BANEXPIRED           = "378" // aircd
 		RPL_WHOISHOST            = "378" // Unreal
-		RPL_MOTD                 = "378" // AustHex
 		RPL_KICKLINKED           = "379" // aircd
 		RPL_WHOISMODES           = "379" // Unreal
-		RPL_WHOWASIP             = "379" // InspIRCd 2.0
 		RPL_BANLINKED            = "380" // aircd
 		RPL_YOURHELPER           = "380" // AustHex
 		RPL_NOTOPERANYMORE       = "385" // AustHex, Hybrid, Unreal
 		RPL_QLIST                = "386" // Unreal
 		RPL_IRCOPS               = "386" // Ultimate
 		RPL_IRCOPSHEADER         = "386" // Nefarious
-		RPL_RSACHALLENGE         = "386" // Hybrid
 		RPL_ENDOFQLIST           = "387" // Unreal
 		RPL_ENDOFIRCOPS          = "387" // Ultimate
 		RPL_IRCOPS               = "387" // Nefarious
@@ -439,7 +411,6 @@ const (
 		ERR_NOULINE              = "480" // AustHex
 		ERR_CANNOTKNOCK          = "480" // Unreal
 		ERR_THROTTLE             = "480" // Ratbox
-		ERR_SSLONLYCHAN          = "480" // Hybrid
 		ERR_NOWALLOP             = "480" // rusnet-ircd
 		ERR_ISCHANSERVICE        = "484" // Undernet
 		ERR_DESYNC               = "484" // Bahamut, Hybrid, PTlink
@@ -448,7 +419,6 @@ const (
 		ERR_CANTKICKADMIN        = "485" // PTlink
 		ERR_ISREALSERVICE        = "485" // QuakeNet
 		ERR_CHANBANREASON        = "485" // Hybrid
-		ERR_BANNEDNICK           = "485" // Ratbox
 		ERR_NONONREG             = "486" // Unreal?
 		ERR_HTMDISABLED          = "486" // Unreal
 		ERR_ACCOUNTONLY          = "486" // QuakeNet
@@ -471,7 +441,6 @@ const (
 		ERR_BADFEATVALUE         = "494" // ircu
 		ERR_OWNMODE              = "494" // Bahamut, charybdis?
 		ERR_BADLOGTYPE           = "495" // ircu
-		ERR_DELAYREJOIN          = "495" // InspIRCd 2.0
 		ERR_BADLOGSYS            = "496" // ircu
 		ERR_BADLOGVALUE          = "497" // ircu
 		ERR_ISOPERLCHAN          = "498" // ircu
@@ -480,8 +449,6 @@ const (
 		ERR_NOREHASHPARAM        = "500" // rusnet-ircd
 		ERR_CANNOTSETMODER       = "500" // InspIRCd
 		ERR_UNKNOWNSNOMASK       = "501" // InspIRCd
-		ERR_GHOSTEDCLIENT        = "503" // Hybrid
-		ERR_VWORLDWARN           = "503" // AustHex
 		ERR_USERNOTONSERV        = "504"
 		ERR_SILELISTFULL         = "511" // ircu
 		ERR_TOOMANYWATCH         = "512" // Bahamut
@@ -489,7 +456,6 @@ const (
 		ERR_BADPING              = "513" // ircu
 		ERR_TOOMANYDCC           = "514" // Bahamut
 		ERR_NOSUCHJUPE           = "514" // irch
-		ERR_INVALID_ERROR        = "514" // ircu
 		ERR_BADEXPIRE            = "515" // ircu
 		ERR_DONTCHEAT            = "516" // ircu
 		ERR_DISABLED             = "517" // ircu
@@ -499,7 +465,6 @@ const (
 		ERR_TOOMANYUSERS         = "519" // ircu
 		ERR_OPERONLY             = "520" // Unreal
 		ERR_MASKTOOWIDE          = "520" // ircu
-		ERR_WHOTRUNC             = "520" // AustHex
 		ERR_LISTSYNTAX           = "521" // Bahamut
 		ERR_NOSUCHGLINE          = "521" // Nefarious
 		ERR_WHOSYNTAX            = "522" // Bahamut
@@ -508,8 +473,6 @@ const (
 		ERR_OPERSPVERIFY         = "524" // Unreal
 		ERR_HELPNOTFOUND         = "524" // Hybrid
 		ERR_INVALIDKEY           = "525" // ircu
-		ERR_REMOTEPFX            = "525" // CAPAB USERCMDPFX
-		ERR_PFXUNROUTABLE        = "526" // CAPAB USERCMDPFX
 		ERR_CANTSENDTOUSER       = "531" // InspIRCd
 		ERR_BADHOSTMASK          = "550" // QuakeNet
 		ERR_HOSTUNAVAIL          = "551" // QuakeNet
@@ -561,9 +524,6 @@ const (
 		RPL_ENDOFOMOTD           = "626" // Ultimate
 		RPL_SETTINGS             = "630" // Ultimate
 		RPL_ENDOFSETTINGS        = "631" // Ultimate
-		RPL_DUMPING              = "640" // Unreal
-		RPL_DUMPRPL              = "641" // Unreal
-		RPL_EODUMP               = "642" // Unreal
 		RPL_SYNTAX               = "650" // InspIRCd 3.0
 		RPL_CHANNELSMSG          = "651" // InspIRCd 3.0
 		RPL_WHOWASIP             = "652" // InspIRCd 3.0
@@ -581,9 +541,7 @@ const (
 		RPL_COMMANDS             = "700" // InspIRCd 3.0
 		RPL_COMMANDSEND          = "701" // InspIRCd 3.0
 		RPL_MODLIST              = "702" // RatBox
-		RPL_COMMANDS             = "702" // InspIRCd 2.0
 		RPL_ENDOFMODLIST         = "703" // RatBox
-		RPL_COMMANDSEND          = "703" // InspIRCd 2.0
 		RPL_HELPSTART            = "704" // RatBox
 		RPL_HELPTXT              = "705" // RatBox
 		RPL_ENDOFHELP            = "706" // RatBox
@@ -640,10 +598,6 @@ const (
 		ERR_SASLALREADY          = "907" // Charybdis/Atheme, IRCv3
 		RPL_SASLMECHS            = "908" // Charybdis/Atheme, IRCv3
 		ERR_BADCHANNEL           = "926" // InspIRCd
-		ERR_WORDFILTERED         = "936" // InspIRCd
-		ERR_ALREADYCHANFILTERED  = "937" // InspIRCd 2.0
-		ERR_NOSUCHCHANFILTER     = "938" // InspIRCd 2.0
-		ERR_CHANFILTERFULL       = "939" // InspIRCd 2.0
 		ERR_INVALIDWATCHNICK     = "942" // InspIRCd
 		RPL_IDLETIMESET          = "944" // InspIRCd
 		RPL_NICKLOCKOFF          = "945" // InspIRCd
@@ -673,8 +627,58 @@ const (
 		ERR_DCCALLOWINVALID      = "996" // InspIRCd
 		RPL_DCCALLOWEXPIRED      = "997" // InspIRCd
 		ERR_UNKNOWNDCCALLOWCMD   = "998" // InspIRCd
-		RPL_DCCALLOWHELP         = "998" // InspIRCd
-		RPL_ENDOFDCCALLOWHELP    = "999" // InspIRCd 2.0
 		ERR_NUMERIC_ERR          = "999" // Bahamut
+	*/
+
+	// Obsolete
+	/*
+		RPL_BOUNCE              = "005" // RFC2812
+		RPL_STATMEM             = "010" // ircu
+		RPL_TRACERECONNECT      = "210" // RFC2812
+		RPL_STATSZLINE          = "225" // Bahamut
+		RPL_SERVICEINFO         = "231" // RFC1459
+		RPL_ENDOFSERVICES       = "232" // RFC1459
+		RPL_SERVICE             = "233" // RFC1459
+		RPL_STATSPING           = "246" // RFC2812
+		RPL_MAPUSERS            = "270" // InspIRCd 2.0
+		RPL_VCHANEXIST          = "276" // Hybrid
+		RPL_VCHANLIST           = "277" // Hybrid
+		RPL_VCHANHELP           = "278" // Hybrid 7.0?
+		RPL_WHOISCHANOP         = "316" // RFC1459
+		RPL_LISTSTART           = "321" // RFC1459
+		RPL_CHANNELMLOCKIS      = "325" // sorircd
+		RPL_SUMMONING           = "342" // RFC1459
+		RPL_WHOWASREAL          = "360" // Charybdis
+		RPL_KILLDONE            = "361" // RFC1459
+		RPL_CLOSING             = "362" // RFC1459
+		RPL_CLOSEEND            = "363" // RFC1459
+		RPL_INFOSTART           = "373" // RFC1459
+		RPL_SPAM                = "377" // AustHex
+		RPL_MOTD                = "378" // AustHex
+		RPL_WHOWASIP            = "379" // InspIRCd 2.0
+		RPL_MYPORTIS            = "384" // RFC1459
+		RPL_RSACHALLENGE        = "386" // Hybrid
+		ERR_YOUWILLBEBANNED     = "466" // RFC1459
+		ERR_SSLONLYCHAN         = "480" // Hybrid
+		ERR_BANNEDNICK          = "485" // Ratbox
+		ERR_NOSERVICEHOST       = "492" // RFC1459
+		ERR_DELAYREJOIN         = "495" // InspIRCd 2.0
+		ERR_GHOSTEDCLIENT       = "503" // Hybrid
+		ERR_VWORLDWARN          = "503" // AustHex
+		ERR_INVALID_ERROR       = "514" // ircu
+		ERR_WHOTRUNC            = "520" // AustHex
+		ERR_REMOTEPFX           = "525" // CAPAB USERCMDPFX
+		ERR_PFXUNROUTABLE       = "526" // CAPAB USERCMDPFX
+		RPL_DUMPING             = "640" // Unreal
+		RPL_DUMPRPL             = "641" // Unreal
+		RPL_EODUMP              = "642" // Unreal
+		RPL_COMMANDS            = "702" // InspIRCd 2.0
+		RPL_COMMANDSEND         = "703" // InspIRCd 2.0
+		ERR_WORDFILTERED        = "936" // InspIRCd
+		ERR_ALREADYCHANFILTERED = "937" // InspIRCd 2.0
+		ERR_NOSUCHCHANFILTER    = "938" // InspIRCd 2.0
+		ERR_CHANFILTERFULL      = "939" // InspIRCd 2.0
+		RPL_DCCALLOWHELP        = "998" // InspIRCd
+		RPL_ENDOFDCCALLOWHELP   = "999" // InspIRCd 2.0
 	*/
 )
