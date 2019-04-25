@@ -5,6 +5,7 @@ vals = data['values']
 
 used = set()
 
+print('//nolint')
 print('package irc')
 print()
 print('const (')
