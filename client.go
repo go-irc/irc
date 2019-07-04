@@ -292,7 +292,7 @@ func (c *Client) RunContext(ctx context.Context) error {
 	// This feels wrong because it results in CAP LS, CAP REQ, NICK, USER, CAP
 	// END, but it works and lets us keep the code a bit simpler.
 	c.Writef("NICK :%s", c.config.Nick)
-	c.Writef("USER %s 0.0.0.0 0.0.0.0 :%s", c.config.User, c.config.Name)
+	c.Writef("USER %s 0 * :%s", c.config.User, c.config.Name)
 
 	// Now that the handshake is pretty much done, we can start listening for
 	// messages.
