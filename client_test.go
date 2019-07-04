@@ -48,7 +48,7 @@ func TestCapReq(t *testing.T) {
 		ExpectLine("CAP LS\r\n"),
 		ExpectLine("CAP REQ :multi-prefix\r\n"),
 		ExpectLine("NICK :test_nick\r\n"),
-		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
+		ExpectLine("USER test_user 0 * :test_name\r\n"),
 		SendLine("CAP * LS :multi-prefix\r\n"),
 		SendLine("CAP * ACK :multi-prefix\r\n"),
 		ExpectLine("CAP END\r\n"),
@@ -68,7 +68,7 @@ func TestCapReq(t *testing.T) {
 		ExpectLine("CAP LS\r\n"),
 		ExpectLine("CAP REQ :multi-prefix\r\n"),
 		ExpectLine("NICK :test_nick\r\n"),
-		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
+		ExpectLine("USER test_user 0 * :test_name\r\n"),
 		SendLine("CAP * LS :multi-prefix\r\n"),
 
 		// TODO: There's currently a bug somewhere preventing this from working
@@ -96,7 +96,7 @@ func TestCapReq(t *testing.T) {
 		ExpectLine("CAP LS\r\n"),
 		ExpectLine("CAP REQ :multi-prefix\r\n"),
 		ExpectLine("NICK :test_nick\r\n"),
-		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
+		ExpectLine("USER test_user 0 * :test_name\r\n"),
 		SendLine("CAP * LS :multi-prefix\r\n"),
 		SendLine("CAP * ACK :multi-prefix\r\n"),
 		ExpectLine("CAP END\r\n"),
@@ -116,7 +116,7 @@ func TestCapReq(t *testing.T) {
 		ExpectLine("CAP LS\r\n"),
 		ExpectLine("CAP REQ :multi-prefix\r\n"),
 		ExpectLine("NICK :test_nick\r\n"),
-		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
+		ExpectLine("USER test_user 0 * :test_name\r\n"),
 		SendLine("CAP * LS :multi-prefix\r\n"),
 		SendLine("CAP * NAK :multi-prefix\r\n"),
 		ExpectLine("CAP END\r\n"),
@@ -135,7 +135,7 @@ func TestCapReq(t *testing.T) {
 		ExpectLine("CAP LS\r\n"),
 		ExpectLine("CAP REQ :multi-prefix\r\n"),
 		ExpectLine("NICK :test_nick\r\n"),
-		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
+		ExpectLine("USER test_user 0 * :test_name\r\n"),
 		SendLine("CAP * LS :multi-prefix\r\n"),
 		SendLine("CAP * NAK :multi-prefix\r\n"),
 	})
@@ -153,7 +153,7 @@ func TestCapReq(t *testing.T) {
 		ExpectLine("CAP LS\r\n"),
 		ExpectLine("CAP REQ :multi-prefix\r\n"),
 		ExpectLine("NICK :test_nick\r\n"),
-		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
+		ExpectLine("USER test_user 0 * :test_name\r\n"),
 		SendLine("CAP * LS :multi-prefix\r\n"),
 		SendLine("CAP * ACK :\r\n"),
 	})
@@ -176,13 +176,13 @@ func TestClient(t *testing.T) {
 	runClientTest(t, config, io.EOF, nil, []TestAction{
 		ExpectLine("PASS :test_pass\r\n"),
 		ExpectLine("NICK :test_nick\r\n"),
-		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
+		ExpectLine("USER test_user 0 * :test_name\r\n"),
 	})
 
 	runClientTest(t, config, io.EOF, nil, []TestAction{
 		ExpectLine("PASS :test_pass\r\n"),
 		ExpectLine("NICK :test_nick\r\n"),
-		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
+		ExpectLine("USER test_user 0 * :test_name\r\n"),
 		SendLine("PING :hello world\r\n"),
 		ExpectLine("PONG :hello world\r\n"),
 	})
@@ -190,7 +190,7 @@ func TestClient(t *testing.T) {
 	c := runClientTest(t, config, io.EOF, nil, []TestAction{
 		ExpectLine("PASS :test_pass\r\n"),
 		ExpectLine("NICK :test_nick\r\n"),
-		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
+		ExpectLine("USER test_user 0 * :test_name\r\n"),
 		SendLine(":test_nick NICK :new_test_nick\r\n"),
 	})
 	assert.Equal(t, "new_test_nick", c.CurrentNick())
@@ -198,7 +198,7 @@ func TestClient(t *testing.T) {
 	c = runClientTest(t, config, io.EOF, nil, []TestAction{
 		ExpectLine("PASS :test_pass\r\n"),
 		ExpectLine("NICK :test_nick\r\n"),
-		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
+		ExpectLine("USER test_user 0 * :test_name\r\n"),
 		SendLine("001 :new_test_nick\r\n"),
 	})
 	assert.Equal(t, "new_test_nick", c.CurrentNick())
@@ -206,7 +206,7 @@ func TestClient(t *testing.T) {
 	c = runClientTest(t, config, io.EOF, nil, []TestAction{
 		ExpectLine("PASS :test_pass\r\n"),
 		ExpectLine("NICK :test_nick\r\n"),
-		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
+		ExpectLine("USER test_user 0 * :test_name\r\n"),
 		SendLine("433\r\n"),
 		ExpectLine("NICK :test_nick_\r\n"),
 	})
@@ -215,7 +215,7 @@ func TestClient(t *testing.T) {
 	c = runClientTest(t, config, io.EOF, nil, []TestAction{
 		ExpectLine("PASS :test_pass\r\n"),
 		ExpectLine("NICK :test_nick\r\n"),
-		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
+		ExpectLine("USER test_user 0 * :test_name\r\n"),
 		SendLine("437\r\n"),
 		ExpectLine("NICK :test_nick_\r\n"),
 	})
@@ -224,7 +224,7 @@ func TestClient(t *testing.T) {
 	c = runClientTest(t, config, io.EOF, nil, []TestAction{
 		ExpectLine("PASS :test_pass\r\n"),
 		ExpectLine("NICK :test_nick\r\n"),
-		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
+		ExpectLine("USER test_user 0 * :test_name\r\n"),
 		SendLine("433\r\n"),
 		ExpectLine("NICK :test_nick_\r\n"),
 		SendLine("001 :test_nick_\r\n"),
@@ -235,7 +235,7 @@ func TestClient(t *testing.T) {
 	c = runClientTest(t, config, io.EOF, nil, []TestAction{
 		ExpectLine("PASS :test_pass\r\n"),
 		ExpectLine("NICK :test_nick\r\n"),
-		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
+		ExpectLine("USER test_user 0 * :test_name\r\n"),
 		SendLine("437\r\n"),
 		ExpectLine("NICK :test_nick_\r\n"),
 		SendLine("001 :test_nick_\r\n"),
@@ -265,7 +265,7 @@ func TestSendLimit(t *testing.T) {
 	runClientTest(t, config, io.EOF, nil, []TestAction{
 		ExpectLine("PASS :test_pass\r\n"),
 		ExpectLine("NICK :test_nick\r\n"),
-		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
+		ExpectLine("USER test_user 0 * :test_name\r\n"),
 		SendLine("001 :hello_world\r\n"),
 	})
 	assert.WithinDuration(t, before, time.Now(), 50*time.Millisecond)
@@ -281,7 +281,7 @@ func TestSendLimit(t *testing.T) {
 	runClientTest(t, config, io.EOF, nil, []TestAction{
 		ExpectLine("PASS :test_pass\r\n"),
 		ExpectLine("NICK :test_nick\r\n"),
-		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
+		ExpectLine("USER test_user 0 * :test_name\r\n"),
 		SendLine("001 :hello_world\r\n"),
 	})
 	assert.WithinDuration(t, before, time.Now(), 60*time.Millisecond)
@@ -303,7 +303,7 @@ func TestClientHandler(t *testing.T) {
 	runClientTest(t, config, io.EOF, nil, []TestAction{
 		ExpectLine("PASS :test_pass\r\n"),
 		ExpectLine("NICK :test_nick\r\n"),
-		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
+		ExpectLine("USER test_user 0 * :test_name\r\n"),
 		SendLine("001 :hello_world\r\n"),
 	})
 	assert.EqualValues(t, []*Message{
@@ -349,7 +349,7 @@ func TestPingLoop(t *testing.T) {
 	runClientTest(t, config, io.EOF, nil, []TestAction{
 		ExpectLine("PASS :test_pass\r\n"),
 		ExpectLine("NICK :test_nick\r\n"),
-		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
+		ExpectLine("USER test_user 0 * :test_name\r\n"),
 		SendLine("001 :hello_world\r\n"),
 		Delay(20 * time.Millisecond),
 		LineFunc(func(m *Message) {
@@ -365,7 +365,7 @@ func TestPingLoop(t *testing.T) {
 	runClientTest(t, config, errors.New("Ping Timeout"), nil, []TestAction{
 		ExpectLine("PASS :test_pass\r\n"),
 		ExpectLine("NICK :test_nick\r\n"),
-		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
+		ExpectLine("USER test_user 0 * :test_name\r\n"),
 		SendLine("001 :hello_world\r\n"),
 		Delay(20 * time.Millisecond),
 		LineFunc(func(m *Message) {
@@ -378,7 +378,7 @@ func TestPingLoop(t *testing.T) {
 	runClientTest(t, config, io.EOF, nil, []TestAction{
 		ExpectLine("PASS :test_pass\r\n"),
 		ExpectLine("NICK :test_nick\r\n"),
-		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
+		ExpectLine("USER test_user 0 * :test_name\r\n"),
 		SendLine("001 :hello_world\r\n"),
 		Delay(20 * time.Millisecond),
 		LineFunc(func(m *Message) {
@@ -394,7 +394,7 @@ func TestPingLoop(t *testing.T) {
 	}, []TestAction{
 		ExpectLine("PASS :test_pass\r\n"),
 		ExpectLine("NICK :test_nick\r\n"),
-		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
+		ExpectLine("USER test_user 0 * :test_name\r\n"),
 		SendLine("001 :hello_world\r\n"),
 	})
 
@@ -402,7 +402,7 @@ func TestPingLoop(t *testing.T) {
 	runClientTest(t, config, errors.New("test error"), nil, []TestAction{
 		ExpectLine("PASS :test_pass\r\n"),
 		ExpectLine("NICK :test_nick\r\n"),
-		ExpectLine("USER test_user 0.0.0.0 0.0.0.0 :test_name\r\n"),
+		ExpectLine("USER test_user 0 * :test_name\r\n"),
 		// We queue this up a line early because the next write will happen after the delay.
 		QueueWriteError(errors.New("test error")),
 		SendLine("001 :hello_world\r\n"),
