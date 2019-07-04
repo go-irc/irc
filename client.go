@@ -238,25 +238,30 @@ func (c *Client) sendError(err error) {
 	}
 }
 
-func (c *Client) startReadLoop(wg *sync.WaitGroup) {
+func (c *Client) startReadLoop(wg *sync.WaitGroup, exiting chan struct{}) {
 	wg.Add(1)
 
 	go func() {
 		defer wg.Done()
 
 		for {
-			m, err := c.ReadMessage()
-			if err != nil {
-				c.sendError(err)
-				break
-			}
+			select {
+			case <-exiting:
+				return
+			default:
+				m, err := c.ReadMessage()
+				if err != nil {
+					c.sendError(err)
+					break
+				}
 
-			if f, ok := clientFilters[m.Command]; ok {
-				f(c, m)
-			}
+				if f, ok := clientFilters[m.Command]; ok {
+					f(c, m)
+				}
 
-			if c.config.Handler != nil {
-				c.config.Handler.Handle(c, m)
+				if c.config.Handler != nil {
+					c.config.Handler.Handle(c, m)
+				}
 			}
 		}
 
@@ -296,7 +301,7 @@ func (c *Client) RunContext(ctx context.Context) error {
 
 	// Now that the handshake is pretty much done, we can start listening for
 	// messages.
-	c.startReadLoop(&wg)
+	c.startReadLoop(&wg, exiting)
 
 	// Wait for an error from any goroutine or for the context to time out, then
 	// signal we're exiting and wait for the goroutines to exit.
