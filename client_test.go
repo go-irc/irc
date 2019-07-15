@@ -408,4 +408,16 @@ func TestPingLoop(t *testing.T) {
 		SendLine("001 :hello_world\r\n"),
 		Delay(25 * time.Millisecond),
 	})
+
+	// See if we can get the client to hang
+	runClientTest(t, config, errors.New("test error"), nil, []TestAction{
+		ExpectLine("PASS :test_pass\r\n"),
+		ExpectLine("NICK :test_nick\r\n"),
+		ExpectLine("USER test_user 0 * :test_name\r\n"),
+		// We queue this up a line early because the next write will happen after the delay.
+		QueueWriteError(errors.New("test error")),
+		SendLine("001 :hello_world\r\n"),
+		Delay(2 * time.Second),
+		AssertClosed(),
+	})
 }

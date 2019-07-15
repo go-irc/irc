@@ -50,6 +50,7 @@ type cap struct {
 // much simpler.
 type Client struct {
 	*Conn
+	rwc    io.ReadWriteCloser
 	config ClientConfig
 
 	// Internal state
@@ -63,9 +64,10 @@ type Client struct {
 }
 
 // NewClient creates a client given an io stream and a client config.
-func NewClient(rw io.ReadWriter, config ClientConfig) *Client {
+func NewClient(rwc io.ReadWriteCloser, config ClientConfig) *Client {
 	c := &Client{
-		Conn:    NewConn(rw),
+		Conn:    NewConn(rwc),
+		rwc:     rwc,
 		config:  config,
 		errChan: make(chan error, 1),
 		caps:    make(map[string]cap),
@@ -312,6 +314,7 @@ func (c *Client) RunContext(ctx context.Context) error {
 	}
 
 	close(exiting)
+	c.rwc.Close()
 	wg.Wait()
 
 	return err
