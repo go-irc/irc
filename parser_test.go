@@ -10,6 +10,12 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
+func BenchmarkParseMessage(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		MustParseMessage("@tag1=something :nick!user@host PRIVMSG #channel :some message")
+	}
+}
+
 func TestMustParseMessage(t *testing.T) {
 	t.Parallel()
 
