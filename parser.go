@@ -261,24 +261,24 @@ func ParseMessage(line string) (*Message, error) {
 	}
 
 	if line[0] == '@' {
-		split := strings.SplitN(line, " ", 2)
-		if len(split) < 2 {
+		loc := strings.Index(line, " ")
+		if loc == -1 {
 			return nil, ErrMissingDataAfterTags
 		}
 
-		c.Tags = ParseTags(split[0][1:])
-		line = split[1]
+		c.Tags = ParseTags(line[1:loc])
+		line = line[loc+1:]
 	}
 
 	if line[0] == ':' {
-		split := strings.SplitN(line, " ", 2)
-		if len(split) < 2 {
+		loc := strings.Index(line, " ")
+		if loc == -1 {
 			return nil, ErrMissingDataAfterPrefix
 		}
 
 		// Parse the identity, if there was one
-		c.Prefix = ParsePrefix(split[0][1:])
-		line = split[1]
+		c.Prefix = ParsePrefix(line[1:loc])
+		line = line[loc+1:]
 	}
 
 	// Split out the trailing then the rest of the args. Because
