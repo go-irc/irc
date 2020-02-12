@@ -18,6 +18,14 @@ func SendLine(output string) TestAction {
 	return SendLineWithTimeout(output, 1*time.Second)
 }
 
+func AssertClosed() TestAction {
+	return func(t *testing.T, rw *testReadWriter) {
+		if !rw.closed {
+			assert.Fail(t, "Expected conn to be closed")
+		}
+	}
+}
+
 func SendLineWithTimeout(output string, timeout time.Duration) TestAction {
 	return func(t *testing.T, rw *testReadWriter) {
 		waitChan := time.After(timeout)
@@ -116,6 +124,7 @@ type testReadWriter struct {
 	readEmptyChan  chan struct{}
 	exiting        chan struct{}
 	clientDone     chan struct{}
+	closed         bool
 	serverBuffer   bytes.Buffer
 }
 
@@ -182,6 +191,20 @@ func (rw *testReadWriter) Write(buf []byte) (int, error) {
 	}
 }
 
+func (rw *testReadWriter) Close() error {
+	select {
+	case <-rw.exiting:
+		return errors.New("Connection closed")
+	default:
+		// Ensure no double close
+		if !rw.closed {
+			rw.closed = true
+			close(rw.exiting)
+		}
+		return nil
+	}
+}
+
 func newTestReadWriter(actions []TestAction) *testReadWriter {
 	return &testReadWriter{
 		actions:        actions,
@@ -223,7 +246,7 @@ func runTest(t *testing.T, rw *testReadWriter, actions []TestAction) {
 	// TODO: Make sure there are no more incoming messages
 
 	// Ask everything to shut down
-	close(rw.exiting)
+	rw.Close()
 
 	// Wait for the client to stop
 	select {

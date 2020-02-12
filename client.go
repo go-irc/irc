@@ -50,6 +50,7 @@ type cap struct {
 // much simpler.
 type Client struct {
 	*Conn
+	rwc    io.ReadWriteCloser
 	config ClientConfig
 
 	// Internal state
@@ -63,9 +64,10 @@ type Client struct {
 }
 
 // NewClient creates a client given an io stream and a client config.
-func NewClient(rw io.ReadWriter, config ClientConfig) *Client {
+func NewClient(rwc io.ReadWriteCloser, config ClientConfig) *Client {
 	c := &Client{
-		Conn:    NewConn(rw),
+		Conn:    NewConn(rwc),
+		rwc:     rwc,
 		config:  config,
 		errChan: make(chan error, 1),
 		caps:    make(map[string]cap),
@@ -238,25 +240,30 @@ func (c *Client) sendError(err error) {
 	}
 }
 
-func (c *Client) startReadLoop(wg *sync.WaitGroup) {
+func (c *Client) startReadLoop(wg *sync.WaitGroup, exiting chan struct{}) {
 	wg.Add(1)
 
 	go func() {
 		defer wg.Done()
 
 		for {
-			m, err := c.ReadMessage()
-			if err != nil {
-				c.sendError(err)
-				break
-			}
+			select {
+			case <-exiting:
+				return
+			default:
+				m, err := c.ReadMessage()
+				if err != nil {
+					c.sendError(err)
+					break
+				}
 
-			if f, ok := clientFilters[m.Command]; ok {
-				f(c, m)
-			}
+				if f, ok := clientFilters[m.Command]; ok {
+					f(c, m)
+				}
 
-			if c.config.Handler != nil {
-				c.config.Handler.Handle(c, m)
+				if c.config.Handler != nil {
+					c.config.Handler.Handle(c, m)
+				}
 			}
 		}
 
@@ -296,7 +303,7 @@ func (c *Client) RunContext(ctx context.Context) error {
 
 	// Now that the handshake is pretty much done, we can start listening for
 	// messages.
-	c.startReadLoop(&wg)
+	c.startReadLoop(&wg, exiting)
 
 	// Wait for an error from any goroutine or for the context to time out, then
 	// signal we're exiting and wait for the goroutines to exit.
@@ -307,6 +314,7 @@ func (c *Client) RunContext(ctx context.Context) error {
 	}
 
 	close(exiting)
+	c.rwc.Close()
 	wg.Wait()
 
 	return err
