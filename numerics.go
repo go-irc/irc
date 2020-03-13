@@ -121,6 +121,21 @@ const (
 	ERR_UMODEUNKNOWNFLAG  = "501"
 	ERR_USERSDONTMATCH    = "502"
 
+	// RFC1459 (Obsolete)
+	RPL_SERVICEINFO     = "231"
+	RPL_ENDOFSERVICES   = "232"
+	RPL_SERVICE         = "233"
+	RPL_WHOISCHANOP     = "316"
+	RPL_LISTSTART       = "321"
+	RPL_SUMMONING       = "342"
+	RPL_KILLDONE        = "361"
+	RPL_CLOSING         = "362"
+	RPL_CLOSEEND        = "363"
+	RPL_INFOSTART       = "373"
+	RPL_MYPORTIS        = "384"
+	ERR_YOUWILLBEBANNED = "466"
+	ERR_NOSERVICEHOST   = "492"
+
 	// RFC2812
 	RPL_WELCOME          = "001"
 	RPL_YOURHOST         = "002"
@@ -149,6 +164,11 @@ const (
 	ERR_BANLISTFULL      = "478"
 	ERR_RESTRICTED       = "484"
 	ERR_UNIQOPRIVSNEEDED = "485"
+
+	// RFC2812 (Obsolete)
+	RPL_BOUNCE         = "005"
+	RPL_TRACERECONNECT = "210"
+	RPL_STATSPING      = "246"
 
 	// IRCv3
 	RPL_STARTTLS        = "670"
@@ -632,36 +652,20 @@ const (
 
 	// Obsolete
 	/*
-		RPL_BOUNCE              = "005" // RFC2812
 		RPL_STATMEM             = "010" // ircu
-		RPL_TRACERECONNECT      = "210" // RFC2812
 		RPL_STATSZLINE          = "225" // Bahamut
-		RPL_SERVICEINFO         = "231" // RFC1459
-		RPL_ENDOFSERVICES       = "232" // RFC1459
-		RPL_SERVICE             = "233" // RFC1459
-		RPL_STATSPING           = "246" // RFC2812
 		RPL_MAPUSERS            = "270" // InspIRCd 2.0
 		RPL_VCHANEXIST          = "276" // Hybrid
 		RPL_VCHANLIST           = "277" // Hybrid
 		RPL_VCHANHELP           = "278" // Hybrid 7.0?
-		RPL_WHOISCHANOP         = "316" // RFC1459
-		RPL_LISTSTART           = "321" // RFC1459
 		RPL_CHANNELMLOCKIS      = "325" // sorircd
-		RPL_SUMMONING           = "342" // RFC1459
 		RPL_WHOWASREAL          = "360" // Charybdis
-		RPL_KILLDONE            = "361" // RFC1459
-		RPL_CLOSING             = "362" // RFC1459
-		RPL_CLOSEEND            = "363" // RFC1459
-		RPL_INFOSTART           = "373" // RFC1459
 		RPL_SPAM                = "377" // AustHex
 		RPL_MOTD                = "378" // AustHex
 		RPL_WHOWASIP            = "379" // InspIRCd 2.0
-		RPL_MYPORTIS            = "384" // RFC1459
 		RPL_RSACHALLENGE        = "386" // Hybrid
-		ERR_YOUWILLBEBANNED     = "466" // RFC1459
 		ERR_SSLONLYCHAN         = "480" // Hybrid
 		ERR_BANNEDNICK          = "485" // Ratbox
-		ERR_NOSERVICEHOST       = "492" // RFC1459
 		ERR_DELAYREJOIN         = "495" // InspIRCd 2.0
 		ERR_GHOSTEDCLIENT       = "503" // Hybrid
 		ERR_VWORLDWARN          = "503" // AustHex
