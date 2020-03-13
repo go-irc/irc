@@ -162,6 +162,15 @@ const (
 	ERR_KEYINVALID      = "767"
 	ERR_KEYNOTSET       = "768"
 	ERR_KEYNOPERMISSION = "769"
+	RPL_LOGGEDIN        = "900" // Charybdis/Atheme, IRCv3
+	RPL_LOGGEDOUT       = "901" // Charybdis/Atheme, IRCv3
+	ERR_NICKLOCKED      = "902" // Charybdis/Atheme, IRCv3
+	RPL_SASLSUCCESS     = "903" // Charybdis/Atheme, IRCv3
+	ERR_SASLFAIL        = "904" // Charybdis/Atheme, IRCv3
+	ERR_SASLTOOLONG     = "905" // Charybdis/Atheme, IRCv3
+	ERR_SASLABORTED     = "906" // Charybdis/Atheme, IRCv3
+	ERR_SASLALREADY     = "907" // Charybdis/Atheme, IRCv3
+	RPL_SASLMECHS       = "908" // Charybdis/Atheme, IRCv3
 
 	// Other
 	RPL_ISUPPORT = "005"
@@ -588,15 +597,6 @@ const (
 		RPL_CHECK                = "802" // InspIRCd 3.0
 		RPL_OTHERUMODEIS         = "803" // InspIRCd 3.0
 		RPL_OTHERSNOMASKIS       = "804" // InspIRCd 3.0
-		RPL_LOGGEDIN             = "900" // Charybdis/Atheme, IRCv3
-		RPL_LOGGEDOUT            = "901" // Charybdis/Atheme, IRCv3
-		ERR_NICKLOCKED           = "902" // Charybdis/Atheme, IRCv3
-		RPL_SASLSUCCESS          = "903" // Charybdis/Atheme, IRCv3
-		ERR_SASLFAIL             = "904" // Charybdis/Atheme, IRCv3
-		ERR_SASLTOOLONG          = "905" // Charybdis/Atheme, IRCv3
-		ERR_SASLABORTED          = "906" // Charybdis/Atheme, IRCv3
-		ERR_SASLALREADY          = "907" // Charybdis/Atheme, IRCv3
-		RPL_SASLMECHS            = "908" // Charybdis/Atheme, IRCv3
 		ERR_BADCHANNEL           = "926" // InspIRCd
 		ERR_INVALIDWATCHNICK     = "942" // InspIRCd
 		RPL_IDLETIMESET          = "944" // InspIRCd
@@ -628,7 +628,7 @@ const (
 		RPL_DCCALLOWEXPIRED      = "997" // InspIRCd
 		ERR_UNKNOWNDCCALLOWCMD   = "998" // InspIRCd
 		ERR_NUMERIC_ERR          = "999" // Bahamut
-	*/
+	//*/
 
 	// Obsolete
 	/*
@@ -680,5 +680,5 @@ const (
 		ERR_CHANFILTERFULL      = "939" // InspIRCd 2.0
 		RPL_DCCALLOWHELP        = "998" // InspIRCd
 		RPL_ENDOFDCCALLOWHELP   = "999" // InspIRCd 2.0
-	*/
+	//*/
 )

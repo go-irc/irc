@@ -16,8 +16,7 @@ def print_item(idx, item, obsolete=None, **kwargs):
     origin = item.get('origin', '')
 
     origin_name = kwargs.pop('origin', '')
-    if origin_name:
-        if not origin or origin not in origin_name: return
+    if origin_name and not origin or origin_name not in origin: return
 
     kwargs['obsolete'] = obsolete
     for k, v in kwargs.items():
@@ -57,12 +56,12 @@ print('// there are way too many conflicts to deal with.')
 print('/*')
 for index, item in enumerate(vals):
     print_item(index, item)
-print('*/')
+print('//*/')
 print()
 print('// Obsolete')
 print('/*')
 for index, item in enumerate(vals):
     print_item(index, item, obsolete=True)
-print('*/')
+print('//*/')
 
 print(')')
