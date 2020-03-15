@@ -1,6 +1,6 @@
 language: go
 go:
-  - '1.7'
+  - '1.7.x'
   - stable
 env:
   - GO111MODULE=on
@@ -18,7 +18,7 @@ script:
   - go test -covermode=count -coverprofile=profile.cov
 
    # Linting
-  - golangci-lint run
+  - '[[ TRAVIS_GO_VERSION != 1.7.* ]] && golangci-lint run'
 
 after_script:
   - $HOME/gopath/bin/goveralls -coverprofile=profile.cov -service=travis-ci
