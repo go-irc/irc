@@ -1,21 +1,24 @@
 language: go
+go:
+  - '1.7'
+  - stable
+env:
+  - GO111MODULE=on
 
 before_install:
-  - go get github.com/axw/gocov/gocov
-  - go get github.com/mattn/goveralls
-  - go get golang.org/x/tools/cmd/cover
-  # Grab all deps (should just be test deps)
-  - go get -v -t ./...
-  # Linting deps
-  - go get github.com/alecthomas/gometalinter
-  - gometalinter --install
   # Remove the go file from the test cases dir as it fails linting
   - rm ./testcases/*.go
 
+  - GO111MODULE=off go get github.com/mattn/goveralls
+  - curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.21.0
+
 script:
-  - gometalinter --fast ./... -D gosec
+  # Test
   - go test -race -v ./...
   - go test -covermode=count -coverprofile=profile.cov
+
+   # Linting
+  - golangci-lint run
 
 after_script:
   - $HOME/gopath/bin/goveralls -coverprofile=profile.cov -service=travis-ci

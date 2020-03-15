@@ -16,7 +16,7 @@ func BenchmarkParseMessage(b *testing.B) {
 	}
 }
 
-func TestMustParseMessage(t *testing.T) {
+func TestParseMessage(t *testing.T) {
 	t.Parallel()
 
 	var messageTests = []struct {
@@ -49,19 +49,23 @@ func TestMustParseMessage(t *testing.T) {
 		assert.Equal(t, test.Err, err, "%d. Error didn't match expected", i)
 
 		if test.Err != nil {
-			assert.Panics(t, func() {
-				MustParseMessage(test.Input)
-			}, "%d. Didn't get expected panic", i)
-
 			assert.Nil(t, m, "%d. Didn't get nil message", i)
 		} else {
-			assert.NotPanics(t, func() {
-				MustParseMessage(test.Input)
-			}, "%d. Got unexpected panic", i)
-
 			assert.NotNil(t, m, "%d. Got nil message", i)
 		}
 	}
+}
+
+func TestMustParseMessage(t *testing.T) {
+	t.Parallel()
+
+	assert.Panics(t, func() {
+		MustParseMessage("")
+	}, "Didn't get expected panic")
+
+	assert.NotPanics(t, func() {
+		MustParseMessage("PING :asdf")
+	}, "Got unexpected panic")
 }
 
 func TestMessageTrailing(t *testing.T) {

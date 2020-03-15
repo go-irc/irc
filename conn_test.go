@@ -112,8 +112,10 @@ func TestConn(t *testing.T) {
 	assert.EqualValues(t, m, m2, "Message returned by client did not match input")
 
 	// Test welcome message
-	rwc.server.WriteString("001 test_nick\r\n")
-	m = testReadMessage(t, c)
+	m = MustParseMessage("001 test_nick")
+	rwc.server.WriteString(m.String() + "\r\n")
+	m2 = testReadMessage(t, c)
+	assert.EqualValues(t, m, m2, "Message returned by client did not match input")
 
 	rwc.server.WriteString(":invalid_message\r\n")
 	_, err := c.ReadMessage()

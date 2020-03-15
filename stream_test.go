@@ -95,6 +95,7 @@ func Delay(delay time.Duration) TestAction {
 	}
 }
 
+/*
 func QueueReadError(err error) TestAction {
 	return func(t *testing.T, rw *testReadWriter) {
 		select {
@@ -104,6 +105,7 @@ func QueueReadError(err error) TestAction {
 		}
 	}
 }
+*/
 
 func QueueWriteError(err error) TestAction {
 	return func(t *testing.T, rw *testReadWriter) {
@@ -116,7 +118,6 @@ func QueueWriteError(err error) TestAction {
 }
 
 type testReadWriter struct {
-	actions        []TestAction
 	writeErrorChan chan error
 	writeChan      chan string
 	readErrorChan  chan error
@@ -205,9 +206,8 @@ func (rw *testReadWriter) Close() error {
 	}
 }
 
-func newTestReadWriter(actions []TestAction) *testReadWriter {
+func newTestReadWriter() *testReadWriter {
 	return &testReadWriter{
-		actions:        actions,
 		writeErrorChan: make(chan error, 1),
 		writeChan:      make(chan string),
 		readErrorChan:  make(chan error, 1),
@@ -218,8 +218,14 @@ func newTestReadWriter(actions []TestAction) *testReadWriter {
 	}
 }
 
-func runClientTest(t *testing.T, cc ClientConfig, expectedErr error, setup func(c *Client), actions []TestAction) *Client {
-	rw := newTestReadWriter(actions)
+func runClientTest(
+	t *testing.T,
+	cc ClientConfig,
+	expectedErr error,
+	setup func(c *Client),
+	actions []TestAction,
+) *Client {
+	rw := newTestReadWriter()
 	c := NewClient(rw, cc)
 
 	if setup != nil {
@@ -239,7 +245,7 @@ func runClientTest(t *testing.T, cc ClientConfig, expectedErr error, setup func(
 
 func runTest(t *testing.T, rw *testReadWriter, actions []TestAction) {
 	// Perform each of the actions
-	for _, action := range rw.actions {
+	for _, action := range actions {
 		action(t, rw)
 	}
 

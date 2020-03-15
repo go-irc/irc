@@ -44,7 +44,7 @@ func handle433(c *Client, m *Message) {
 	if c.connected {
 		return
 	}
-	c.currentNick = c.currentNick + "_"
+	c.currentNick += "_"
 	c.Writef("NICK :%s", c.currentNick)
 }
 
@@ -65,7 +65,7 @@ func handle437(c *Client, m *Message) {
 	if c.connected {
 		return
 	}
-	c.currentNick = c.currentNick + "_"
+	c.currentNick += "_"
 	c.Writef("NICK :%s", c.currentNick)
 }
 

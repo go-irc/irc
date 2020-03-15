@@ -182,7 +182,7 @@ func (c *Client) handlePing(timestamp int64, pongChan chan struct{}, wg *sync.Wa
 
 	select {
 	case <-timer.C:
-		c.sendError(errors.New("Ping Timeout"))
+		c.sendError(errors.New("ping timeout"))
 	case <-pongChan:
 		return
 	case <-exiting:
@@ -193,7 +193,7 @@ func (c *Client) handlePing(timestamp int64, pongChan chan struct{}, wg *sync.Wa
 // maybeStartCapHandshake will run a CAP LS and all the relevant CAP REQ
 // commands if there are any CAPs requested.
 func (c *Client) maybeStartCapHandshake() {
-	if len(c.caps) <= 0 {
+	if len(c.caps) == 0 {
 		return
 	}
 
@@ -266,7 +266,6 @@ func (c *Client) startReadLoop(wg *sync.WaitGroup, exiting chan struct{}) {
 				}
 			}
 		}
-
 	}()
 }
 

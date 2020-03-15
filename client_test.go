@@ -362,7 +362,7 @@ func TestPingLoop(t *testing.T) {
 	})
 
 	// Ping timeout
-	runClientTest(t, config, errors.New("Ping Timeout"), nil, []TestAction{
+	runClientTest(t, config, errors.New("ping timeout"), nil, []TestAction{
 		ExpectLine("PASS :test_pass\r\n"),
 		ExpectLine("NICK :test_nick\r\n"),
 		ExpectLine("USER test_user 0 * :test_name\r\n"),
