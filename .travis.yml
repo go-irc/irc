@@ -18,7 +18,7 @@ script:
   - go test -covermode=count -coverprofile=profile.cov
 
    # Linting
-  - '[[ $TRAVIS_GO_VERSION != 1.7.* ]] && golangci-lint run'
+  - if [[ $TRAVIS_GO_VERSION != 1.7.* ]]; then golangci-lint run; fi
 
 after_script:
   - $HOME/gopath/bin/goveralls -coverprofile=profile.cov -service=travis-ci
