@@ -1,7 +1,7 @@
 # go-irc
 
 [![GoDoc](https://img.shields.io/badge/doc-GoDoc-blue.svg)](https://godoc.org/github.com/go-irc/irc)
-[![Build Status](https://img.shields.io/travis/go-irc/irc.svg)](https://travis-ci.org/go-irc/irc)
+[![Build Status](https://github.com/go-irc/irc/workflows/CI/badge.svg)](https://github.com/go-irc/irc/actions)
 [![Coverage Status](https://img.shields.io/coveralls/go-irc/irc.svg)](https://coveralls.io/github/go-irc/irc?branch=master)
 
 This package was originally created to only handle message parsing,
