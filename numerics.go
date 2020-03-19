@@ -171,8 +171,14 @@ const (
 	RPL_STATSPING      = "246"
 
 	// IRCv3
+	ERR_INVALIDCAPCMD   = "410" // Undernet?
 	RPL_STARTTLS        = "670"
 	ERR_STARTTLS        = "691"
+	RPL_MONONLINE       = "730" // RatBox
+	RPL_MONOFFLINE      = "731" // RatBox
+	RPL_MONLIST         = "732" // RatBox
+	RPL_ENDOFMONLIST    = "733" // RatBox
+	ERR_MONLISTFULL     = "734" // RatBox
 	RPL_WHOISKEYVALUE   = "760"
 	RPL_KEYVALUE        = "761"
 	RPL_METADATAEND     = "762"
@@ -397,7 +403,6 @@ const (
 		ERR_UNKNOWNERROR         = "400"
 		ERR_NOCOLORSONCHAN       = "408" // Bahamut
 		ERR_NOCTRLSONCHAN        = "408" // Hybrid
-		ERR_INVALIDCAPCMD        = "410" // Undernet?
 		ERR_TOOMANYMATCHES       = "416" // IRCnet
 		ERR_QUERYTOOLONG         = "416" // ircu
 		ERR_INPUTTOOLONG         = "417" // ircu
@@ -598,11 +603,6 @@ const (
 		RPL_TESTMASKGECOS        = "727" // RatBox
 		RPL_QUIETLIST            = "728" // Charybdis
 		RPL_ENDOFQUIETLIST       = "729" // Charybdis
-		RPL_MONONLINE            = "730" // RatBox
-		RPL_MONOFFLINE           = "731" // RatBox
-		RPL_MONLIST              = "732" // RatBox
-		RPL_ENDOFMONLIST         = "733" // RatBox
-		ERR_MONLISTFULL          = "734" // RatBox
 		RPL_RSACHALLENGE2        = "740" // RatBox
 		RPL_ENDOFRSACHALLENGE2   = "741" // RatBox
 		ERR_MLOCKRESTRICTED      = "742" // Charybdis
