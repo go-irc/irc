@@ -49,6 +49,7 @@ just using this library, these are not needed.
 ### v4 - Under Development
 
 - Move client to the new ircx package
+- Add Conn.Close
 
 ### v3
 
