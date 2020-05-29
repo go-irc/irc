@@ -3,13 +3,32 @@ linters:
   disable:
     - gochecknoglobals
     - gomnd
-    # TODO: re-enable these
-    - errcheck
-    - funlen
-    # TODO: maybe re-enable these
-    - godox
+    - nlreturn
     - wsl
+    # TODO: maybe re-enable these
+    - exhaustruct
+    - godox
+    - varnamelen
+    # TODO: fix error handling
+    - goerr113
+    - wrapcheck
+    - errorlint
+    - errname
+
+    # Deprecated linters
+    - deadcode
+    - exhaustivestruct
+    - golint
+    - ifshort
+    - interfacer
+    - maligned
+    - nosnakecase
+    - scopelint
+    - structcheck
+    - varcheck
 
 linters-settings:
   govet:
     check-shadowing: true
+  gci:
+    local-prefixes: gopkg.in/irc.v4

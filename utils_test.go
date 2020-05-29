@@ -1,15 +1,17 @@
-package irc
+package irc_test
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"gopkg.in/irc.v4"
 )
 
 func TestMaskToRegex(t *testing.T) {
 	t.Parallel()
 
-	var testCases = []struct {
+	var testCases = []struct { //nolint:gofumpt
 		Input  string
 		Expect string
 	}{
@@ -56,7 +58,7 @@ func TestMaskToRegex(t *testing.T) {
 	}
 
 	for _, testCase := range testCases {
-		ret, err := MaskToRegex(testCase.Input)
+		ret, err := irc.MaskToRegex(testCase.Input)
 		assert.NoError(t, err)
 		assert.Equal(t, testCase.Expect, ret.String())
 	}

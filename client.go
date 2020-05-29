@@ -42,7 +42,7 @@ type ClientConfig struct {
 	Handler Handler
 }
 
-type cap struct {
+type capStatus struct {
 	// Requested means that this cap was requested by the user
 	Requested bool
 
@@ -71,20 +71,20 @@ type Client struct {
 	limiter               *rate.Limiter
 	incomingPongChan      chan string
 	errChan               chan error
-	caps                  map[string]cap
+	caps                  map[string]capStatus
 	remainingCapResponses int
 	connected             bool
 }
 
 // NewClient creates a client given an io stream and a client config.
 func NewClient(rwc io.ReadWriteCloser, config ClientConfig) *Client {
-	c := &Client{
+	c := &Client{ //nolint:exhaustruct
 		Conn:        NewConn(rwc),
-		config:      config,
-		errChan:     make(chan error, 1),
-		caps:        make(map[string]cap),
 		closer:      rwc,
+		config:      config,
 		currentNick: config.Nick,
+		errChan:     make(chan error, 1),
+		caps:        make(map[string]capStatus),
 	}
 
 	if config.SendLimit != 0 {
@@ -176,7 +176,11 @@ func (c *Client) maybeStartPingLoop(wg *sync.WaitGroup, exiting chan struct{}) {
 func (c *Client) handlePing(timestamp int64, pongChan chan struct{}, wg *sync.WaitGroup, exiting chan struct{}) {
 	defer wg.Done()
 
-	c.Writef("PING :%d", timestamp)
+	err := c.Writef("PING :%d", timestamp)
+	if err != nil {
+		c.sendError(err)
+		return
+	}
 
 	timer := time.NewTimer(c.config.PingTimeout)
 	defer timer.Stop()
@@ -193,19 +197,28 @@ func (c *Client) handlePing(timestamp int64, pongChan chan struct{}, wg *sync.Wa
 
 // maybeStartCapHandshake will run a CAP LS and all the relevant CAP REQ
 // commands if there are any CAPs requested.
-func (c *Client) maybeStartCapHandshake() {
+func (c *Client) maybeStartCapHandshake() error {
 	if len(c.caps) == 0 {
-		return
+		return nil
 	}
 
-	c.Write("CAP LS")
+	err := c.Write("CAP LS")
+	if err != nil {
+		return err
+	}
+
 	c.remainingCapResponses = 1 // We count the CAP LS response as a normal response
 	for key, cap := range c.caps {
 		if cap.Requested {
-			c.Writef("CAP REQ :%s", key)
+			err = c.Writef("CAP REQ :%s", key)
+			if err != nil {
+				return err
+			}
 			c.remainingCapResponses++
 		}
 	}
+
+	return nil
 }
 
 // CapRequest allows you to request IRCv3 capabilities from the server during
@@ -214,10 +227,10 @@ func (c *Client) maybeStartCapHandshake() {
 // the CAP is marked as required, the client will exit if that CAP could not be
 // negotiated during the handshake.
 func (c *Client) CapRequest(capName string, required bool) {
-	cap := c.caps[capName]
-	cap.Requested = true
-	cap.Required = cap.Required || required
-	c.caps[capName] = cap
+	capStatus := c.caps[capName]
+	capStatus.Requested = true
+	capStatus.Required = capStatus.Required || required
+	c.caps[capName] = capStatus
 }
 
 // CapEnabled allows you to check if a CAP is enabled for this connection. Note
@@ -263,11 +276,11 @@ func (c *Client) startReadLoop(wg *sync.WaitGroup, exiting chan struct{}) {
 				}
 
 				if c.ISupport != nil {
-					c.ISupport.Handle(m)
+					_ = c.ISupport.Handle(m)
 				}
 
 				if c.Tracker != nil {
-					c.Tracker.Handle(m)
+					_ = c.Tracker.Handle(m)
 				}
 
 				if c.config.Handler != nil {
@@ -296,15 +309,27 @@ func (c *Client) RunContext(ctx context.Context) error {
 	c.maybeStartPingLoop(&wg, exiting)
 
 	if c.config.Pass != "" {
-		c.Writef("PASS :%s", c.config.Pass)
+		err := c.Writef("PASS :%s", c.config.Pass)
+		if err != nil {
+			return err
+		}
 	}
 
-	c.maybeStartCapHandshake()
+	err := c.maybeStartCapHandshake()
+	if err != nil {
+		return err
+	}
 
 	// This feels wrong because it results in CAP LS, CAP REQ, NICK, USER, CAP
 	// END, but it works and lets us keep the code a bit simpler.
-	c.Writef("NICK :%s", c.config.Nick)
-	c.Writef("USER %s 0 * :%s", c.config.User, c.config.Name)
+	err = c.Writef("NICK :%s", c.config.Nick)
+	if err != nil {
+		return err
+	}
+	err = c.Writef("USER %s 0 * :%s", c.config.User, c.config.Name)
+	if err != nil {
+		return err
+	}
 
 	// Now that the handshake is pretty much done, we can start listening for
 	// messages.
@@ -312,7 +337,6 @@ func (c *Client) RunContext(ctx context.Context) error {
 
 	// Wait for an error from any goroutine or for the context to time out, then
 	// signal we're exiting and wait for the goroutines to exit.
-	var err error
 	select {
 	case err = <-c.errChan:
 	case <-ctx.Done():
