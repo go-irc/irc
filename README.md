@@ -39,11 +39,16 @@ considered stable enough, a new release will be tagged.
 In order to run the tests, make sure all submodules are up to date. If you are
 just using this library, these are not needed.
 
+## Notes on Unstable APIs
+
+Currently the ISupport and Tracker APIs are considered unstable - these may be
+broken with minor version changes, so use them at your own risk.
+
 ## Major Version Changes
 
 ### v4
 
-- Added initial ISupport and Tracker support
+- Added initial ISupport and Tracker support as unstable APIs
 - Drop the separate TagValue type
 - Drop Tags.GetTag
 
