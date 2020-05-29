@@ -17,6 +17,14 @@ type ClientConfig struct {
 	User string
 	Name string
 
+	// If this is set to true, the ISupport value on the client struct will be
+	// non-nil.
+	EnableISupport bool
+
+	// If this is set to true, the Tracker value on the client struct will be
+	// non-nil.
+	EnableTracker bool
+
 	// Connection settings
 	PingFrequency time.Duration
 	PingTimeout   time.Duration
@@ -46,11 +54,14 @@ type cap struct {
 	Available bool
 }
 
-// Client is a wrapper around Conn which is designed to make common operations
-// much simpler.
+// Client is a wrapper around irc.Conn which is designed to make common
+// operations much simpler. It is safe for concurrent use.
 type Client struct {
 	*Conn
-	rwc    io.ReadWriteCloser
+	closer   io.Closer
+	ISupport *ISupportTracker
+	Tracker  *Tracker
+
 	config ClientConfig
 
 	// Internal state
@@ -66,11 +77,20 @@ type Client struct {
 // NewClient creates a client given an io stream and a client config.
 func NewClient(rwc io.ReadWriteCloser, config ClientConfig) *Client {
 	c := &Client{
-		Conn:    NewConn(rwc),
-		rwc:     rwc,
-		config:  config,
-		errChan: make(chan error, 1),
-		caps:    make(map[string]cap),
+		Conn:        NewConn(rwc),
+		config:      config,
+		errChan:     make(chan error, 1),
+		caps:        make(map[string]cap),
+		closer:      rwc,
+		currentNick: config.Nick,
+	}
+
+	if config.EnableISupport || config.EnableTracker {
+		c.ISupport = NewISupportTracker()
+	}
+
+	if config.EnableTracker {
+		c.Tracker = NewTracker(c.ISupport)
 	}
 
 	// Replace the writer writeCallback with one of our own
@@ -84,7 +104,7 @@ func (c *Client) writeCallback(w *Writer, line string) error {
 		<-c.limiter
 	}
 
-	_, err := w.writer.Write([]byte(line + "\r\n"))
+	_, err := w.RawWrite([]byte(line + "\r\n"))
 	if err != nil {
 		c.sendError(err)
 	}
@@ -261,6 +281,14 @@ func (c *Client) startReadLoop(wg *sync.WaitGroup, exiting chan struct{}) {
 					f(c, m)
 				}
 
+				if c.ISupport != nil {
+					c.ISupport.Handle(m)
+				}
+
+				if c.Tracker != nil {
+					c.Tracker.Handle(m)
+				}
+
 				if c.config.Handler != nil {
 					c.config.Handler.Handle(c, m)
 				}
@@ -273,7 +301,7 @@ func (c *Client) startReadLoop(wg *sync.WaitGroup, exiting chan struct{}) {
 // strange and unexpected ways if it is called again before the first connection
 // exits.
 func (c *Client) Run() error {
-	return c.RunContext(context.TODO())
+	return c.RunContext(context.Background())
 }
 
 // RunContext is the same as Run but a context.Context can be passed in for
@@ -286,8 +314,6 @@ func (c *Client) RunContext(ctx context.Context) error {
 
 	c.maybeStartLimiter(&wg, exiting)
 	c.maybeStartPingLoop(&wg, exiting)
-
-	c.currentNick = c.config.Nick
 
 	if c.config.Pass != "" {
 		c.Writef("PASS :%s", c.config.Pass)
@@ -313,7 +339,7 @@ func (c *Client) RunContext(ctx context.Context) error {
 	}
 
 	close(exiting)
-	c.rwc.Close()
+	c.closer.Close()
 	wg.Wait()
 
 	return err

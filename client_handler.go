@@ -10,7 +10,7 @@ type Handler interface {
 // to be used as a Handler.
 type HandlerFunc func(*Client, *Message)
 
-// Handle calls f(c, m)
+// Handle calls f(c, m).
 func (f HandlerFunc) Handle(c *Client, m *Message) {
 	f(c, m)
 }
