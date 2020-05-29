@@ -27,19 +27,32 @@ type Writer struct {
 	// not be stable.
 	DebugCallback func(line string)
 
+	// WriteCallback is called for each outgoing message. It needs to write the
+	// message to the connection. Note that this API is not a part of the semver
+	// stability guarantee.
+	WriteCallback func(w *Writer, line string) error
+
 	// Internal fields
-	writer        io.Writer
-	writeCallback func(w *Writer, line string) error
+	writer io.Writer
 }
 
 func defaultWriteCallback(w *Writer, line string) error {
-	_, err := w.writer.Write([]byte(line + "\r\n"))
+	_, err := w.RawWrite([]byte(line + "\r\n"))
 	return err
 }
 
 // NewWriter creates an irc.Writer from an io.Writer.
 func NewWriter(w io.Writer) *Writer {
-	return &Writer{nil, w, defaultWriteCallback}
+	return &Writer{nil, defaultWriteCallback, w}
+}
+
+// RawWrite will write the given data to the underlying connection, skipping the
+// WriteCallback. This is meant to be used by implementations of the
+// WriteCallback to write data directly to the stream. Otherwise, it is
+// recommended to avoid this function and use one of the other helpers. Also
+// note that it will not append \r\n to the end of the line.
+func (w *Writer) RawWrite(data []byte) (int, error) {
+	return w.writer.Write(data)
 }
 
 // Write is a simple function which will write the given line to the
@@ -49,7 +62,7 @@ func (w *Writer) Write(line string) error {
 		w.DebugCallback(line)
 	}
 
-	return w.writeCallback(w, line)
+	return w.WriteCallback(w, line)
 }
 
 // Writef is a wrapper around the connection's Write method and

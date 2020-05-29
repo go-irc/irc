@@ -74,7 +74,7 @@ func NewClient(rwc io.ReadWriteCloser, config ClientConfig) *Client {
 	}
 
 	// Replace the writer writeCallback with one of our own
-	c.Conn.Writer.writeCallback = c.writeCallback
+	c.Conn.Writer.WriteCallback = c.writeCallback
 
 	return c
 }
