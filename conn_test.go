@@ -10,10 +10,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+var errorWriterErr = errors.New("errorWriter: error")
+
 type errorWriter struct{}
 
 func (ew *errorWriter) Write([]byte) (int, error) {
-	return 0, errors.New("errorWriter: error")
+	return 0, errorWriterErr
 }
 
 type readWriteCloser struct {

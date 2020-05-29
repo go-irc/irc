@@ -134,7 +134,7 @@ func (t Tags) Copy() Tags {
 	return ret
 }
 
-// String ensures this is stringable
+// String ensures this is stringable.
 func (t Tags) String() string {
 	buf := &bytes.Buffer{}
 
@@ -154,7 +154,7 @@ func (t Tags) String() string {
 	return buf.String()
 }
 
-// Prefix represents the prefix of a message, generally the user who sent it
+// Prefix represents the prefix of a message, generally the user who sent it.
 type Prefix struct {
 	// Name will contain the nick of who sent the message, the
 	// server who sent the message, or a blank string
@@ -189,7 +189,7 @@ func ParsePrefix(line string) *Prefix {
 	return id
 }
 
-// Copy will create a new copy of an Prefix
+// Copy will create a new copy of an Prefix.
 func (p *Prefix) Copy() *Prefix {
 	if p == nil {
 		return nil
@@ -202,7 +202,7 @@ func (p *Prefix) Copy() *Prefix {
 	return newPrefix
 }
 
-// String ensures this is stringable
+// String ensures this is stringable.
 func (p *Prefix) String() string {
 	buf := &bytes.Buffer{}
 	buf.WriteString(p.Name)
@@ -220,7 +220,7 @@ func (p *Prefix) String() string {
 	return buf.String()
 }
 
-// Message represents a line parsed from the server
+// Message represents a line parsed from the server.
 type Message struct {
 	// Each message can have IRCv3 tags
 	Tags
@@ -316,7 +316,7 @@ func ParseMessage(line string) (*Message, error) {
 }
 
 // Trailing returns the last argument in the Message or an empty string
-// if there are no args
+// if there are no args.
 func (m *Message) Trailing() string {
 	if len(m.Params) < 1 {
 		return ""
@@ -325,7 +325,7 @@ func (m *Message) Trailing() string {
 	return m.Params[len(m.Params)-1]
 }
 
-// Copy will create a new copy of an message
+// Copy will create a new copy of an message.
 func (m *Message) Copy() *Message {
 	// Create a new message
 	newMessage := &Message{}
@@ -350,7 +350,7 @@ func (m *Message) Copy() *Message {
 	return newMessage
 }
 
-// String ensures this is stringable
+// String ensures this is stringable.
 func (m *Message) String() string {
 	buf := &bytes.Buffer{}
 

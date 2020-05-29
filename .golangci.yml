@@ -6,6 +6,7 @@ linters:
     # TODO: re-enable these
     - errcheck
     - funlen
+    - testpackage
     # TODO: maybe re-enable these
     - godox
     - wsl

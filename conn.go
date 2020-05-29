@@ -15,7 +15,7 @@ type Conn struct {
 	rwc io.ReadWriteCloser
 }
 
-// NewConn creates a new Conn
+// NewConn creates a new Conn.
 func NewConn(rwc io.ReadWriteCloser) *Conn {
 	return &Conn{
 		NewReader(rwc),
@@ -75,7 +75,7 @@ func (w *Writer) Writef(format string, args ...interface{}) error {
 	return w.Write(fmt.Sprintf(format, args...))
 }
 
-// WriteMessage writes the given message to the stream
+// WriteMessage writes the given message to the stream.
 func (w *Writer) WriteMessage(m *Message) error {
 	return w.Write(m.String())
 }
