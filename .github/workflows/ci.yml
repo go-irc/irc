@@ -24,12 +24,13 @@ jobs:
     - name: Clean up extra files
       run: rm ./testcases/*.go
 
-    - name: Run golangci-lint
-      uses: actions-contrib/golangci-lint@v1
-      env:
-        GOROOT: ''
-      with:
-        golangci_lint_version: 'v1.27.0'
+    # This is disabled until is properly respects the golangci_lint_version
+    #- name: Run golangci-lint
+    #  uses: actions-contrib/golangci-lint@v1
+    #  env:
+    #    GOROOT: ''
+    #  with:
+    #    golangci_lint_version: 'v1.27.0'
 
     - name: Download deps
       run: go mod download

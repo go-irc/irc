@@ -11,16 +11,13 @@ import (
 type Conn struct {
 	*Reader
 	*Writer
-
-	rwc io.ReadWriteCloser
 }
 
 // NewConn creates a new Conn.
-func NewConn(rwc io.ReadWriteCloser) *Conn {
+func NewConn(rw io.ReadWriter) *Conn {
 	return &Conn{
-		NewReader(rwc),
-		NewWriter(rwc),
-		rwc,
+		NewReader(rw),
+		NewWriter(rw),
 	}
 }
 
@@ -116,9 +113,4 @@ func (r *Reader) ReadMessage() (*Message, error) {
 
 	// Parse the message from our line
 	return ParseMessage(line)
-}
-
-// Close will close the underlying TCP connection.
-func (c *Conn) Close() error {
-	return c.rwc.Close()
 }
