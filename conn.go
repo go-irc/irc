@@ -11,13 +11,16 @@ import (
 type Conn struct {
 	*Reader
 	*Writer
+
+	rwc io.ReadWriteCloser
 }
 
 // NewConn creates a new Conn
-func NewConn(rw io.ReadWriter) *Conn {
+func NewConn(rwc io.ReadWriteCloser) *Conn {
 	return &Conn{
-		NewReader(rw),
-		NewWriter(rw),
+		NewReader(rwc),
+		NewWriter(rwc),
+		rwc,
 	}
 }
 
@@ -37,7 +40,8 @@ type Writer struct {
 }
 
 func defaultWriteCallback(w *Writer, line string) error {
-	return w.WriteRaw([]byte(line + "\r\n"))
+	_, err := w.RawWrite([]byte(line + "\r\n"))
+	return err
 }
 
 // NewWriter creates an irc.Writer from an io.Writer.
@@ -45,14 +49,13 @@ func NewWriter(w io.Writer) *Writer {
 	return &Writer{nil, defaultWriteCallback, w}
 }
 
-// WriteRaw will write the given data to the underlying connection, skipping the
+// RawWrite will write the given data to the underlying connection, skipping the
 // WriteCallback. This is meant to be used by implementations of the
 // WriteCallback to write data directly to the stream. Otherwise, it is
 // recommended to avoid this function and use one of the other helpers. Also
 // note that it will not append \r\n to the end of the line.
-func (w *Writer) WriteRaw(data []byte) error {
-	_, err := w.writer.Write(data)
-	return err
+func (w *Writer) RawWrite(data []byte) (int, error) {
+	return w.writer.Write(data)
 }
 
 // Write is a simple function which will write the given line to the
@@ -113,4 +116,9 @@ func (r *Reader) ReadMessage() (*Message, error) {
 
 	// Parse the message from our line
 	return ParseMessage(line)
+}
+
+// Close will close the underlying TCP connection.
+func (c *Conn) Close() error {
+	return c.rwc.Close()
 }
