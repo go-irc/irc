@@ -6,7 +6,10 @@
 
 This package was originally created to only handle message parsing,
 but has since been expanded to include a small abstraction around a
-connection and a simple client.
+connection.
+
+Additional abstractions can be found in the
+[ircx](https://github.com/go-irc/ircx) package.
 
 This library is not designed to hide any of the IRC elements from
 you. If you just want to build a simple chat bot and don't want to
@@ -30,71 +33,26 @@ package, only go 1.7+ is officially supported.
 All development happens on the `master` branch and when features are
 considered stable enough, a new release will be tagged.
 
-* `gopkg.in/irc.v3` should be used to develop against the commits
+* `github.com/go-irc/irc/v4` should be used to develop against the commits
   tagged as stable
-* In previous versions, `github.com/go-irc/irc` used to be able to be
-  used to develop against the master branch but module support in go
-  seems to have broken this.
+
+Note that this will most-likely change back to `gopkg.in/go-irc/irc.v4` once out
+of pre-release status.
 
 ## Development
 
 In order to run the tests, make sure all submodules are up to date. If you are
 just using this library, these are not needed.
 
-## Example
-
-```go
-package main
-
-import (
-	"log"
-	"net"
-
-	"gopkg.in/irc.v3"
-)
-
-func main() {
-	conn, err := net.Dial("tcp", "chat.freenode.net:6667")
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	config := irc.ClientConfig{
-		Nick: "i_have_a_nick",
-		Pass: "password",
-		User: "username",
-		Name: "Full Name",
-		Handler: irc.HandlerFunc(func(c *irc.Client, m *irc.Message) {
-			if m.Command == "001" {
-				// 001 is a welcome event, so we join channels there
-				c.Write("JOIN #bot-test-chan")
-			} else if m.Command == "PRIVMSG" && c.FromChannel(m) {
-				// Create a handler on all messages.
-				c.WriteMessage(&irc.Message{
-					Command: "PRIVMSG",
-					Params: []string{
-						m.Params[0],
-						m.Trailing(),
-					},
-				})
-			}
-		}),
-	}
-
-	// Create the client
-	client := irc.NewClient(conn, config)
-	err = client.Run()
-	if err != nil {
-		log.Fatalln(err)
-	}
-}
-```
-
 ## Major Version Changes
 
-### v1
+### v4 - Under Development
 
-Initial release
+- Move client to the new ircx package
+
+### v3
+
+- Import path changed back to `gopkg.in/irc.v3` without the version suffix.
 
 ### v2
 
@@ -103,6 +61,6 @@ Initial release
 - Remove Message.FromChannel as this is not always accurate, while
   Client.FromChannel should always be accurate.
 
-### v3
+### v1
 
-- Import path changed back to `gopkg.in/irc.v3` without the version suffix.
+Initial release
