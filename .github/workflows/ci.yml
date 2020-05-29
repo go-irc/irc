@@ -28,11 +28,11 @@ jobs:
       run: go mod download
 
     - name: Run golangci-lint
-      uses: actions-contrib/golangci-lint@v1
+      uses: golangci/golangci-lint-action@v2
       env:
         GOROOT: ''
       with:
-        golangci_lint_version: 'v1.23.6'
+        version: 'v1.49.0'
 
     - name: Run tests
       run: go test -race -v ./...

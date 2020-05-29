@@ -207,7 +207,7 @@ func (t *Tracker) handleKick(msg *Message) error {
 
 	// user was kicked from channel by actor
 
-	//actor := msg.Prefix.Name
+	// actor := msg.Prefix.Name
 	user := msg.Params[1]
 	channel := msg.Params[0]
 

@@ -55,10 +55,9 @@ func ParseTagValue(v string) string {
 		}
 
 		if c == '\\' {
+			// If we got a backslash followed by the end of the tag value, we
+			// should just ignore the backslash.
 			c2, _, err := input.ReadRune()
-
-			// If we got a backslash then the end of the tag value, we should
-			// just ignore the backslash.
 			if err != nil {
 				break
 			}
@@ -125,7 +124,7 @@ func (t Tags) Copy() Tags {
 	return ret
 }
 
-// String ensures this is stringable
+// String ensures this is stringable.
 func (t Tags) String() string {
 	buf := &bytes.Buffer{}
 
@@ -140,12 +139,12 @@ func (t Tags) String() string {
 
 	// We don't need the first byte because that's an extra ';'
 	// character.
-	buf.ReadByte()
+	_, _ = buf.ReadByte()
 
 	return buf.String()
 }
 
-// Prefix represents the prefix of a message, generally the user who sent it
+// Prefix represents the prefix of a message, generally the user who sent it.
 type Prefix struct {
 	// Name will contain the nick of who sent the message, the
 	// server who sent the message, or a blank string
@@ -180,7 +179,7 @@ func ParsePrefix(line string) *Prefix {
 	return id
 }
 
-// Copy will create a new copy of an Prefix
+// Copy will create a new copy of an Prefix.
 func (p *Prefix) Copy() *Prefix {
 	if p == nil {
 		return nil
@@ -193,7 +192,7 @@ func (p *Prefix) Copy() *Prefix {
 	return newPrefix
 }
 
-// String ensures this is stringable
+// String ensures this is stringable.
 func (p *Prefix) String() string {
 	buf := &bytes.Buffer{}
 	buf.WriteString(p.Name)
@@ -211,7 +210,7 @@ func (p *Prefix) String() string {
 	return buf.String()
 }
 
-// Message represents a line parsed from the server
+// Message represents a line parsed from the server.
 type Message struct {
 	// Each message can have IRCv3 tags
 	Tags
@@ -239,7 +238,7 @@ func MustParseMessage(line string) *Message {
 // ParseMessage takes a message string (usually a whole line) and
 // parses it into a Message struct. This will return nil in the case
 // of invalid messages.
-func ParseMessage(line string) (*Message, error) {
+func ParseMessage(line string) (*Message, error) { //nolint:funlen
 	// Trim the line and make sure we have data
 	line = strings.TrimRight(line, "\r\n")
 	if len(line) == 0 {
@@ -307,7 +306,7 @@ func ParseMessage(line string) (*Message, error) {
 }
 
 // Param returns the i'th argument in the Message or an empty string
-// if the requested arg does not exist
+// if the requested arg does not exist.
 func (m *Message) Param(i int) string {
 	if i < 0 || i >= len(m.Params) {
 		return ""
@@ -316,7 +315,7 @@ func (m *Message) Param(i int) string {
 }
 
 // Trailing returns the last argument in the Message or an empty string
-// if there are no args
+// if there are no args.
 func (m *Message) Trailing() string {
 	if len(m.Params) < 1 {
 		return ""
@@ -325,7 +324,7 @@ func (m *Message) Trailing() string {
 	return m.Params[len(m.Params)-1]
 }
 
-// Copy will create a new copy of an message
+// Copy will create a new copy of an message.
 func (m *Message) Copy() *Message {
 	// Create a new message
 	newMessage := &Message{}
@@ -350,7 +349,7 @@ func (m *Message) Copy() *Message {
 	return newMessage
 }
 
-// String ensures this is stringable
+// String ensures this is stringable.
 func (m *Message) String() string {
 	buf := &bytes.Buffer{}
 

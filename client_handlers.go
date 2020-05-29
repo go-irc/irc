@@ -22,9 +22,9 @@ var clientFilters = map[string]clientFilter{
 
 // From rfc2812 section 5.1 (Command responses)
 //
-// 001    RPL_WELCOME
-//        "Welcome to the Internet Relay Network
-//        <nick>!<user>@<host>"
+//	001    RPL_WELCOME
+//	"Welcome to the Internet Relay Network
+//	<nick>!<user>@<host>"
 func handle001(c *Client, m *Message) {
 	c.currentNick = m.Params[0]
 	c.connected = true
@@ -32,12 +32,12 @@ func handle001(c *Client, m *Message) {
 
 // From rfc2812 section 5.2 (Error Replies)
 //
-// 433    ERR_NICKNAMEINUSE
-//        "<nick> :Nickname is already in use"
+//	433    ERR_NICKNAMEINUSE
+//	       "<nick> :Nickname is already in use"
 //
-// - Returned when a NICK message is processed that results
-//   in an attempt to change to a currently existing
-//   nickname.
+//	- Returned when a NICK message is processed that results
+//	  in an attempt to change to a currently existing
+//	  nickname.
 func handle433(c *Client, m *Message) {
 	// We only want to try and handle nick collisions during the initial
 	// handshake.
@@ -45,20 +45,20 @@ func handle433(c *Client, m *Message) {
 		return
 	}
 	c.currentNick += "_"
-	c.Writef("NICK :%s", c.currentNick)
+	_ = c.Writef("NICK :%s", c.currentNick)
 }
 
 // From rfc2812 section 5.2 (Error Replies)
 //
-// 437    ERR_UNAVAILRESOURCE
-//        "<nick/channel> :Nick/channel is temporarily unavailable"
+//	437    ERR_UNAVAILRESOURCE
+//		   "<nick/channel> :Nick/channel is temporarily unavailable"
 //
-// - Returned by a server to a user trying to join a channel
-//   currently blocked by the channel delay mechanism.
+//	- Returned by a server to a user trying to join a channel
+//	  currently blocked by the channel delay mechanism.
 //
-// - Returned by a server to a user trying to change nickname
-//   when the desired nickname is blocked by the nick delay
-//   mechanism.
+//	- Returned by a server to a user trying to change nickname
+//	  when the desired nickname is blocked by the nick delay
+//	  mechanism.
 func handle437(c *Client, m *Message) {
 	// We only want to try and handle nick collisions during the initial
 	// handshake.
@@ -66,13 +66,13 @@ func handle437(c *Client, m *Message) {
 		return
 	}
 	c.currentNick += "_"
-	c.Writef("NICK :%s", c.currentNick)
+	_ = c.Writef("NICK :%s", c.currentNick)
 }
 
 func handlePing(c *Client, m *Message) {
 	reply := m.Copy()
 	reply.Command = "PONG"
-	c.WriteMessage(reply)
+	_ = c.WriteMessage(reply)
 }
 
 func handlePong(c *Client, m *Message) {
@@ -109,31 +109,31 @@ func handleCap(c *Client, m *Message) {
 	}
 
 	if c.remainingCapResponses <= 0 {
-		for key, cap := range c.caps {
-			if cap.Required && !cap.Enabled {
+		for key, capStatus := range c.caps {
+			if capStatus.Required && !capStatus.Enabled {
 				c.sendError(fmt.Errorf("CAP %s requested but not accepted", key))
 				return
 			}
 		}
 
-		c.Write("CAP END")
+		_ = c.Write("CAP END")
 	}
 }
 
 func handleCapLs(c *Client, m *Message) {
 	for _, key := range strings.Split(m.Trailing(), " ") {
-		cap := c.caps[key]
-		cap.Available = true
-		c.caps[key] = cap
+		capStatus := c.caps[key]
+		capStatus.Available = true
+		c.caps[key] = capStatus
 	}
 	c.remainingCapResponses--
 }
 
 func handleCapAck(c *Client, m *Message) {
 	for _, key := range strings.Split(m.Trailing(), " ") {
-		cap := c.caps[key]
-		cap.Enabled = true
-		c.caps[key] = cap
+		capStatus := c.caps[key]
+		capStatus.Enabled = true
+		c.caps[key] = capStatus
 	}
 	c.remainingCapResponses--
 }

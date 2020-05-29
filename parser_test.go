@@ -1,4 +1,4 @@
-package irc
+package irc_test
 
 import (
 	"io/ioutil"
@@ -8,36 +8,38 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	yaml "gopkg.in/yaml.v2"
+
+	"gopkg.in/irc.v4"
 )
 
 func BenchmarkParseMessage(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		MustParseMessage("@tag1=something :nick!user@host PRIVMSG #channel :some message")
+		irc.MustParseMessage("@tag1=something :nick!user@host PRIVMSG #channel :some message")
 	}
 }
 
 func TestParseMessage(t *testing.T) {
 	t.Parallel()
 
-	var messageTests = []struct {
+	var messageTests = []struct { //nolint:gofumpt
 		Input string
 		Err   error
 	}{
 		{
 			Input: "",
-			Err:   ErrZeroLengthMessage,
+			Err:   irc.ErrZeroLengthMessage,
 		},
 		{
 			Input: "@asdf",
-			Err:   ErrMissingDataAfterTags,
+			Err:   irc.ErrMissingDataAfterTags,
 		},
 		{
 			Input: ":asdf",
-			Err:   ErrMissingDataAfterPrefix,
+			Err:   irc.ErrMissingDataAfterPrefix,
 		},
 		{
 			Input: " :",
-			Err:   ErrMissingCommand,
+			Err:   irc.ErrMissingCommand,
 		},
 		{
 			Input: "PING :asdf",
@@ -45,7 +47,7 @@ func TestParseMessage(t *testing.T) {
 	}
 
 	for i, test := range messageTests {
-		m, err := ParseMessage(test.Input)
+		m, err := irc.ParseMessage(test.Input)
 		assert.Equal(t, test.Err, err, "%d. Error didn't match expected", i)
 
 		if test.Err != nil {
@@ -60,18 +62,18 @@ func TestMustParseMessage(t *testing.T) {
 	t.Parallel()
 
 	assert.Panics(t, func() {
-		MustParseMessage("")
+		irc.MustParseMessage("")
 	}, "Didn't get expected panic")
 
 	assert.NotPanics(t, func() {
-		MustParseMessage("PING :asdf")
+		irc.MustParseMessage("PING :asdf")
 	}, "Got unexpected panic")
 }
 
 func TestMessageParam(t *testing.T) {
 	t.Parallel()
 
-	m := MustParseMessage("PING :test")
+	m := irc.MustParseMessage("PING :test")
 	assert.Equal(t, m.Param(0), "test")
 	assert.Equal(t, m.Param(-1), "")
 	assert.Equal(t, m.Param(2), "")
@@ -80,17 +82,17 @@ func TestMessageParam(t *testing.T) {
 func TestMessageTrailing(t *testing.T) {
 	t.Parallel()
 
-	m := MustParseMessage("PING :helloworld")
+	m := irc.MustParseMessage("PING :helloworld")
 	assert.Equal(t, "helloworld", m.Trailing())
 
-	m = MustParseMessage("PING")
+	m = irc.MustParseMessage("PING")
 	assert.Equal(t, "", m.Trailing())
 }
 
 func TestMessageCopy(t *testing.T) {
 	t.Parallel()
 
-	m := MustParseMessage("@tag=val :user@host PING :helloworld")
+	m := irc.MustParseMessage("@tag=val :user@host PING :helloworld")
 
 	// Ensure copied messages are equal
 	c := m.Copy()
@@ -116,13 +118,13 @@ func TestMessageCopy(t *testing.T) {
 	// The message itself doesn't matter, we just need to make sure we
 	// don't error if the user does something crazy and makes Params
 	// nil.
-	m = MustParseMessage("PING :hello world")
+	m = irc.MustParseMessage("PING :hello world")
 	m.Prefix = nil
 	c = m.Copy()
 	assert.EqualValues(t, m, c, "nil prefix copy failed")
 
 	// Ensure an empty Params is copied as nil
-	m = MustParseMessage("PING")
+	m = irc.MustParseMessage("PING")
 	m.Params = []string{}
 	c = m.Copy()
 	assert.Nil(t, c.Params, "Expected nil for empty params")
@@ -154,7 +156,7 @@ func TestMsgSplit(t *testing.T) {
 	require.NoError(t, err)
 
 	for _, test := range splitTests.Tests {
-		msg, err := ParseMessage(test.Input)
+		msg, err := irc.ParseMessage(test.Input)
 		assert.NoError(t, err, "%s: Failed to parse: %s (%s)", test.Desc, test.Input, err)
 
 		assert.Equal(t,
@@ -202,6 +204,8 @@ type MsgJoinTests struct {
 }
 
 func TestMsgJoin(t *testing.T) {
+	var ok bool
+
 	t.Parallel()
 
 	data, err := ioutil.ReadFile("./_testcases/tests/msg-join.yaml")
@@ -212,8 +216,8 @@ func TestMsgJoin(t *testing.T) {
 	require.NoError(t, err)
 
 	for _, test := range splitTests.Tests {
-		msg := &Message{
-			Prefix:  ParsePrefix(test.Atoms.Source),
+		msg := &irc.Message{
+			Prefix:  irc.ParsePrefix(test.Atoms.Source),
 			Command: test.Atoms.Verb,
 			Params:  test.Atoms.Params,
 			Tags:    make(map[string]string),
@@ -223,7 +227,8 @@ func TestMsgJoin(t *testing.T) {
 			if v == nil {
 				msg.Tags[k] = ""
 			} else {
-				msg.Tags[k] = v.(string)
+				msg.Tags[k], ok = v.(string)
+				assert.True(t, ok)
 			}
 		}
 
@@ -254,7 +259,7 @@ func TestUserhostSplit(t *testing.T) {
 	require.NoError(t, err)
 
 	for _, test := range userhostTests.Tests {
-		prefix := ParsePrefix(test.Source)
+		prefix := irc.ParsePrefix(test.Source)
 
 		assert.Equal(t,
 			test.Atoms.Nick, prefix.Name,

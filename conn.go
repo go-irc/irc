@@ -14,7 +14,7 @@ type Conn struct {
 	*Writer
 }
 
-// NewConn creates a new Conn
+// NewConn creates a new Conn.
 func NewConn(rw io.ReadWriter) *Conn {
 	return &Conn{
 		NewReader(rw),
@@ -73,7 +73,7 @@ func (w *Writer) Writef(format string, args ...interface{}) error {
 	return w.Write(fmt.Sprintf(format, args...))
 }
 
-// WriteMessage writes the given message to the stream
+// WriteMessage writes the given message to the stream.
 func (w *Writer) WriteMessage(m *Message) error {
 	return w.Write(m.String())
 }

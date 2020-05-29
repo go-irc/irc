@@ -1,4 +1,4 @@
-package irc
+package irc_test
 
 import (
 	"bytes"
@@ -8,13 +8,35 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"gopkg.in/irc.v4"
 )
+
+var errorWriterErr = errors.New("errorWriter: error")
 
 type errorWriter struct{}
 
 func (ew *errorWriter) Write([]byte) (int, error) {
-	return 0, errors.New("errorWriter: error")
+	return 0, errorWriterErr
 }
+
+type nopCloser struct {
+	io.Reader
+	io.Writer
+}
+
+func newNopCloser(inner io.ReadWriter) *nopCloser {
+	return &nopCloser{
+		Reader: inner,
+		Writer: inner,
+	}
+}
+
+func (nc *nopCloser) Close() error {
+	return nil
+}
+
+var _ io.ReadWriteCloser = (*nopCloser)(nil)
 
 type readWriteCloser struct {
 	io.Reader
@@ -42,17 +64,17 @@ func (t *testReadWriteCloser) Write(p []byte) (int, error) {
 	return t.client.Write(p)
 }
 
-func (t *testReadWriteCloser) Close() error {
-	return nil
-}
+func testReadMessage(t *testing.T, c *irc.Conn) *irc.Message {
+	t.Helper()
 
-func testReadMessage(t *testing.T, c *Conn) *Message {
 	m, err := c.ReadMessage()
 	assert.NoError(t, err)
 	return m
 }
 
 func testLines(t *testing.T, rwc *testReadWriteCloser, expected []string) {
+	t.Helper()
+
 	lines := strings.Split(rwc.client.String(), "\r\n")
 	var line, clientLine string
 	for len(expected) > 0 {
@@ -80,9 +102,9 @@ func TestWriteMessageError(t *testing.T) {
 		nil,
 	}
 
-	c := NewConn(rw)
+	c := irc.NewConn(rw)
 
-	err := c.WriteMessage(MustParseMessage("PING :hello world"))
+	err := c.WriteMessage(irc.MustParseMessage("PING :hello world"))
 	assert.Error(t, err)
 
 	err = c.Writef("PING :hello world")
@@ -96,39 +118,41 @@ func TestConn(t *testing.T) {
 	t.Parallel()
 
 	rwc := newTestReadWriteCloser()
-	c := NewConn(rwc)
+	c := irc.NewConn(rwc)
 
 	// Test writing a message
-	m := &Message{Prefix: &Prefix{}, Command: "PING", Params: []string{"Hello World"}}
-	c.WriteMessage(m)
+	m := &irc.Message{Prefix: &irc.Prefix{}, Command: "PING", Params: []string{"Hello World"}}
+	err := c.WriteMessage(m)
+	assert.NoError(t, err)
 	testLines(t, rwc, []string{
 		"PING :Hello World",
 	})
 
 	// Test with Writef
-	c.Writef("PING :%s", "Hello World")
+	err = c.Writef("PING :%s", "Hello World")
+	assert.NoError(t, err)
 	testLines(t, rwc, []string{
 		"PING :Hello World",
 	})
 
-	m = MustParseMessage("PONG :Hello World")
+	m = irc.MustParseMessage("PONG :Hello World")
 	rwc.server.WriteString(m.String() + "\r\n")
 	m2 := testReadMessage(t, c)
 
 	assert.EqualValues(t, m, m2, "Message returned by client did not match input")
 
 	// Test welcome message
-	m = MustParseMessage("001 test_nick")
+	m = irc.MustParseMessage("001 test_nick")
 	rwc.server.WriteString(m.String() + "\r\n")
 	m2 = testReadMessage(t, c)
 	assert.EqualValues(t, m, m2, "Message returned by client did not match input")
 
 	rwc.server.WriteString(":invalid_message\r\n")
-	_, err := c.ReadMessage()
-	assert.Equal(t, ErrMissingDataAfterPrefix, err)
+	_, err = c.ReadMessage()
+	assert.Equal(t, irc.ErrMissingDataAfterPrefix, err)
 
 	// Ensure empty messages are ignored
-	m = MustParseMessage("001 test_nick")
+	m = irc.MustParseMessage("001 test_nick")
 	rwc.server.WriteString("\r\n" + m.String() + "\r\n")
 	m2 = testReadMessage(t, c)
 	assert.EqualValues(t, m, m2, "Message returned by client did not match input")
@@ -145,7 +169,7 @@ func TestDebugCallback(t *testing.T) {
 
 	var readerHit, writerHit bool
 	rwc := newTestReadWriteCloser()
-	c := NewConn(rwc)
+	c := irc.NewConn(rwc)
 	c.Writer.DebugCallback = func(string) {
 		writerHit = true
 	}
@@ -153,12 +177,13 @@ func TestDebugCallback(t *testing.T) {
 		readerHit = true
 	}
 
-	m := &Message{Prefix: &Prefix{}, Command: "PING", Params: []string{"Hello World"}}
-	c.WriteMessage(m)
+	m := &irc.Message{Prefix: &irc.Prefix{}, Command: "PING", Params: []string{"Hello World"}}
+	err := c.WriteMessage(m)
+	assert.NoError(t, err)
 	testLines(t, rwc, []string{
 		"PING :Hello World",
 	})
-	m = MustParseMessage("PONG :Hello World")
+	m = irc.MustParseMessage("PONG :Hello World")
 	rwc.server.WriteString(m.String() + "\r\n")
 	testReadMessage(t, c)
 

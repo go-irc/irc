@@ -25,7 +25,7 @@ func MaskToRegex(rawMask string) (*regexp.Regexp, error) {
 			break
 		}
 
-		if c == '\\' {
+		if c == '\\' { //nolint:nestif
 			c, err = input.ReadByte()
 			if err != nil {
 				output.WriteString(regexp.QuoteMeta("\\"))

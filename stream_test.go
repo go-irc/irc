@@ -1,4 +1,4 @@
-package irc
+package irc_test
 
 import (
 	"bytes"
@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+
+	"gopkg.in/irc.v4"
 )
 
 // TestAction is used to execute an action during a stream test. If a
@@ -20,6 +22,8 @@ func SendLine(output string) TestAction {
 
 func AssertClosed() TestAction {
 	return func(t *testing.T, rw *testReadWriter) {
+		t.Helper()
+
 		if !rw.closed {
 			assert.Fail(t, "Expected conn to be closed")
 		}
@@ -28,6 +32,8 @@ func AssertClosed() TestAction {
 
 func SendLineWithTimeout(output string, timeout time.Duration) TestAction {
 	return func(t *testing.T, rw *testReadWriter) {
+		t.Helper()
+
 		waitChan := time.After(timeout)
 
 		// First we send the message
@@ -54,15 +60,19 @@ func SendLineWithTimeout(output string, timeout time.Duration) TestAction {
 
 func SendFunc(cb func() string) TestAction {
 	return func(t *testing.T, rw *testReadWriter) {
+		t.Helper()
+
 		SendLine(cb())(t, rw)
 	}
 }
 
-func LineFunc(cb func(m *Message)) TestAction {
+func LineFunc(cb func(m *irc.Message)) TestAction {
 	return func(t *testing.T, rw *testReadWriter) {
+		t.Helper()
+
 		select {
 		case line := <-rw.writeChan:
-			cb(MustParseMessage(line))
+			cb(irc.MustParseMessage(line))
 		case <-time.After(1 * time.Second):
 			assert.Fail(t, "LineFunc timeout")
 		case <-rw.exiting:
@@ -76,6 +86,8 @@ func ExpectLine(input string) TestAction {
 
 func ExpectLineWithTimeout(input string, timeout time.Duration) TestAction {
 	return func(t *testing.T, rw *testReadWriter) {
+		t.Helper()
+
 		select {
 		case line := <-rw.writeChan:
 			assert.Equal(t, input, line)
@@ -88,6 +100,8 @@ func ExpectLineWithTimeout(input string, timeout time.Duration) TestAction {
 
 func Delay(delay time.Duration) TestAction {
 	return func(t *testing.T, rw *testReadWriter) {
+		t.Helper()
+
 		select {
 		case <-time.After(delay):
 		case <-rw.exiting:
@@ -109,6 +123,8 @@ func QueueReadError(err error) TestAction {
 
 func QueueWriteError(err error) TestAction {
 	return func(t *testing.T, rw *testReadWriter) {
+		t.Helper()
+
 		select {
 		case rw.writeErrorChan <- err:
 		default:
@@ -220,13 +236,15 @@ func newTestReadWriter() *testReadWriter {
 
 func runClientTest(
 	t *testing.T,
-	cc ClientConfig,
+	cc irc.ClientConfig,
 	expectedErr error,
-	setup func(c *Client),
+	setup func(c *irc.Client),
 	actions []TestAction,
-) *Client {
+) *irc.Client {
+	t.Helper()
+
 	rw := newTestReadWriter()
-	c := NewClient(rw, cc)
+	c := irc.NewClient(rw, cc)
 
 	if setup != nil {
 		setup(c)
@@ -244,6 +262,8 @@ func runClientTest(
 }
 
 func runTest(t *testing.T, rw *testReadWriter, actions []TestAction) {
+	t.Helper()
+
 	// Perform each of the actions
 	for _, action := range actions {
 		action(t, rw)

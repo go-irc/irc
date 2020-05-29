@@ -1,6 +1,8 @@
-package irc
+//nolint:funlen
+package irc_test
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -8,21 +10,23 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+
+	"gopkg.in/irc.v4"
 )
 
 type TestHandler struct {
-	messages []*Message
+	messages []*irc.Message
 	delay    time.Duration
 }
 
-func (th *TestHandler) Handle(c *Client, m *Message) {
+func (th *TestHandler) Handle(c *irc.Client, m *irc.Message) {
 	th.messages = append(th.messages, m)
 	if th.delay > 0 {
 		time.Sleep(th.delay)
 	}
 }
 
-func (th *TestHandler) Messages() []*Message {
+func (th *TestHandler) Messages() []*irc.Message {
 	ret := th.messages
 	th.messages = nil
 	return ret
@@ -31,7 +35,7 @@ func (th *TestHandler) Messages() []*Message {
 func TestCapReq(t *testing.T) {
 	t.Parallel()
 
-	config := ClientConfig{
+	config := irc.ClientConfig{
 		Nick: "test_nick",
 		Pass: "test_pass",
 		User: "test_user",
@@ -39,7 +43,7 @@ func TestCapReq(t *testing.T) {
 	}
 
 	// Happy path
-	c := runClientTest(t, config, io.EOF, func(c *Client) {
+	c := runClientTest(t, config, io.EOF, func(c *irc.Client) {
 		assert.False(t, c.CapAvailable("random-thing"))
 		assert.False(t, c.CapAvailable("multi-prefix"))
 		c.CapRequest("multi-prefix", true)
@@ -59,7 +63,7 @@ func TestCapReq(t *testing.T) {
 	assert.True(t, c.CapAvailable("multi-prefix"))
 
 	// Malformed CAP responses should be ignored
-	c = runClientTest(t, config, io.EOF, func(c *Client) {
+	c = runClientTest(t, config, io.EOF, func(c *irc.Client) {
 		assert.False(t, c.CapAvailable("random-thing"))
 		assert.False(t, c.CapAvailable("multi-prefix"))
 		c.CapRequest("multi-prefix", true)
@@ -87,7 +91,7 @@ func TestCapReq(t *testing.T) {
 	assert.True(t, c.CapAvailable("multi-prefix"))
 
 	// Additional CAP messages after the start are ignored.
-	c = runClientTest(t, config, io.EOF, func(c *Client) {
+	c = runClientTest(t, config, io.EOF, func(c *irc.Client) {
 		assert.False(t, c.CapAvailable("random-thing"))
 		assert.False(t, c.CapAvailable("multi-prefix"))
 		c.CapRequest("multi-prefix", true)
@@ -107,7 +111,7 @@ func TestCapReq(t *testing.T) {
 	assert.False(t, c.CapAvailable("random-thing"))
 	assert.True(t, c.CapAvailable("multi-prefix"))
 
-	c = runClientTest(t, config, io.EOF, func(c *Client) {
+	c = runClientTest(t, config, io.EOF, func(c *irc.Client) {
 		assert.False(t, c.CapAvailable("random-thing"))
 		assert.False(t, c.CapAvailable("multi-prefix"))
 		c.CapRequest("multi-prefix", false)
@@ -126,7 +130,7 @@ func TestCapReq(t *testing.T) {
 	assert.False(t, c.CapAvailable("random-thing"))
 	assert.True(t, c.CapAvailable("multi-prefix"))
 
-	c = runClientTest(t, config, errors.New("CAP multi-prefix requested but was rejected"), func(c *Client) {
+	c = runClientTest(t, config, errors.New("CAP multi-prefix requested but was rejected"), func(c *irc.Client) {
 		assert.False(t, c.CapAvailable("random-thing"))
 		assert.False(t, c.CapAvailable("multi-prefix"))
 		c.CapRequest("multi-prefix", true)
@@ -144,7 +148,7 @@ func TestCapReq(t *testing.T) {
 	assert.False(t, c.CapAvailable("random-thing"))
 	assert.True(t, c.CapAvailable("multi-prefix"))
 
-	c = runClientTest(t, config, errors.New("CAP multi-prefix requested but not accepted"), func(c *Client) {
+	c = runClientTest(t, config, errors.New("CAP multi-prefix requested but not accepted"), func(c *irc.Client) {
 		assert.False(t, c.CapAvailable("random-thing"))
 		assert.False(t, c.CapAvailable("multi-prefix"))
 		c.CapRequest("multi-prefix", true)
@@ -166,7 +170,7 @@ func TestCapReq(t *testing.T) {
 func TestClient(t *testing.T) {
 	t.Parallel()
 
-	config := ClientConfig{
+	config := irc.ClientConfig{
 		Nick: "test_nick",
 		Pass: "test_pass",
 		User: "test_user",
@@ -249,7 +253,7 @@ func TestSendLimit(t *testing.T) {
 
 	handler := &TestHandler{}
 
-	config := ClientConfig{
+	config := irc.ClientConfig{
 		Nick: "test_nick",
 		Pass: "test_pass",
 		User: "test_user",
@@ -291,7 +295,7 @@ func TestClientHandler(t *testing.T) {
 	t.Parallel()
 
 	handler := &TestHandler{}
-	config := ClientConfig{
+	config := irc.ClientConfig{
 		Nick: "test_nick",
 		Pass: "test_pass",
 		User: "test_user",
@@ -306,10 +310,10 @@ func TestClientHandler(t *testing.T) {
 		ExpectLine("USER test_user 0 * :test_name\r\n"),
 		SendLine("001 :hello_world\r\n"),
 	})
-	assert.EqualValues(t, []*Message{
+	assert.EqualValues(t, []*irc.Message{
 		{
-			Tags:    Tags{},
-			Prefix:  &Prefix{},
+			Tags:    irc.Tags{},
+			Prefix:  &irc.Prefix{},
 			Command: "001",
 			Params:  []string{"hello_world"},
 		},
@@ -319,21 +323,22 @@ func TestClientHandler(t *testing.T) {
 func TestFromChannel(t *testing.T) {
 	t.Parallel()
 
-	c := Client{currentNick: "test_nick"}
-	m := MustParseMessage("PRIVMSG test_nick :hello world")
+	c := irc.NewClient(newNopCloser(&bytes.Buffer{}), irc.ClientConfig{Nick: "test_nick"})
+
+	m := irc.MustParseMessage("PRIVMSG test_nick :hello world")
 	assert.False(t, c.FromChannel(m))
 
-	m = MustParseMessage("PRIVMSG #a_channel :hello world")
+	m = irc.MustParseMessage("PRIVMSG #a_channel :hello world")
 	assert.True(t, c.FromChannel(m))
 
-	m = MustParseMessage("PING")
+	m = irc.MustParseMessage("PING")
 	assert.False(t, c.FromChannel(m))
 }
 
 func TestPingLoop(t *testing.T) {
 	t.Parallel()
 
-	config := ClientConfig{
+	config := irc.ClientConfig{
 		Nick: "test_nick",
 		Pass: "test_pass",
 		User: "test_user",
@@ -343,7 +348,7 @@ func TestPingLoop(t *testing.T) {
 		PingTimeout:   5 * time.Millisecond,
 	}
 
-	var lastPing *Message
+	var lastPing *irc.Message
 
 	// Successful ping
 	runClientTest(t, config, io.EOF, nil, []TestAction{
@@ -352,7 +357,7 @@ func TestPingLoop(t *testing.T) {
 		ExpectLine("USER test_user 0 * :test_name\r\n"),
 		SendLine("001 :hello_world\r\n"),
 		Delay(20 * time.Millisecond),
-		LineFunc(func(m *Message) {
+		LineFunc(func(m *irc.Message) {
 			lastPing = m
 		}),
 		SendFunc(func() string {
@@ -368,7 +373,7 @@ func TestPingLoop(t *testing.T) {
 		ExpectLine("USER test_user 0 * :test_name\r\n"),
 		SendLine("001 :hello_world\r\n"),
 		Delay(20 * time.Millisecond),
-		LineFunc(func(m *Message) {
+		LineFunc(func(m *irc.Message) {
 			lastPing = m
 		}),
 		Delay(20 * time.Millisecond),
@@ -381,22 +386,24 @@ func TestPingLoop(t *testing.T) {
 		ExpectLine("USER test_user 0 * :test_name\r\n"),
 		SendLine("001 :hello_world\r\n"),
 		Delay(20 * time.Millisecond),
-		LineFunc(func(m *Message) {
+		LineFunc(func(m *irc.Message) {
 			lastPing = m
 		}),
 	})
 
-	// This one is just for coverage, so we know we're hitting the
-	// branch that drops extra pings.
-	runClientTest(t, config, io.EOF, func(c *Client) {
-		c.incomingPongChan = make(chan string)
-		handlePong(c, MustParseMessage("PONG :hello 1"))
-	}, []TestAction{
-		ExpectLine("PASS :test_pass\r\n"),
-		ExpectLine("NICK :test_nick\r\n"),
-		ExpectLine("USER test_user 0 * :test_name\r\n"),
-		SendLine("001 :hello_world\r\n"),
-	})
+	/*
+		// This one is just for coverage, so we know we're hitting the
+		// branch that drops extra pings.
+		runClientTest(t, config, io.EOF, func(c *irc.Client) {
+			c.incomingPongChan = make(chan string)
+			handlePong(c, irc.MustParseMessage("PONG :hello 1"))
+		}, []TestAction{
+			ExpectLine("PASS :test_pass\r\n"),
+			ExpectLine("NICK :test_nick\r\n"),
+			ExpectLine("USER test_user 0 * :test_name\r\n"),
+			SendLine("001 :hello_world\r\n"),
+		})
+	*/
 
 	// Successful ping with write error
 	runClientTest(t, config, errors.New("test error"), nil, []TestAction{

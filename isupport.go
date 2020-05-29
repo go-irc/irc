@@ -40,7 +40,7 @@ func (t *ISupportTracker) Handle(msg *Message) error {
 		return errors.New("malformed RPL_ISUPPORT message")
 	}
 
-	// Check for really old servers (or servers which based 005 off of rfc2812.
+	// Check for really old servers (or servers which based 005 off of rfc2812).
 	if !strings.HasSuffix(msg.Trailing(), "server") {
 		return errors.New("received invalid RPL_ISUPPORT message")
 	}

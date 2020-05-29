@@ -1,16 +1,18 @@
-package irc
+package irc_test
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"gopkg.in/irc.v4"
 )
 
 func TestHandlerFunc(t *testing.T) {
 	t.Parallel()
 
 	hit := false
-	var f HandlerFunc = func(c *Client, m *Message) {
+	var f irc.HandlerFunc = func(c *irc.Client, m *irc.Message) {
 		hit = true
 	}
 
