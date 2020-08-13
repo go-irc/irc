@@ -315,6 +315,15 @@ func ParseMessage(line string) (*Message, error) {
 	return c, nil
 }
 
+// Param returns the i'th argument in the Message or an empty string
+// if the requested arg does not exist
+func (m *Message) Param(i int) string {
+	if i < 0 || i >= len(m.Params) {
+		return ""
+	}
+	return m.Params[i]
+}
+
 // Trailing returns the last argument in the Message or an empty string
 // if there are no args
 func (m *Message) Trailing() string {

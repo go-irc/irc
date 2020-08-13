@@ -68,6 +68,15 @@ func TestMustParseMessage(t *testing.T) {
 	}, "Got unexpected panic")
 }
 
+func TestMessageParam(t *testing.T) {
+	t.Parallel()
+
+	m := MustParseMessage("PING :test")
+	assert.Equal(t, m.Param(0), "test")
+	assert.Equal(t, m.Param(-1), "")
+	assert.Equal(t, m.Param(2), "")
+}
+
 func TestMessageTrailing(t *testing.T) {
 	t.Parallel()
 
