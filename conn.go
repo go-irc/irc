@@ -88,16 +88,24 @@ func NewReader(r io.Reader) *Reader {
 }
 
 // ReadMessage returns the next message from the stream or an error.
-func (r *Reader) ReadMessage() (*Message, error) {
-	line, err := r.reader.ReadString('\n')
-	if err != nil {
-		return nil, err
-	}
+// It ignores empty messages.
+func (r *Reader) ReadMessage() (msg *Message, err error) {
+	// It's valid for a message to be empty. Clients should ignore these,
+	// so we do to be good citizens.
+	err = ErrZeroLengthMessage
+	for err == ErrZeroLengthMessage {
+		var line string
+		line, err = r.reader.ReadString('\n')
+		if err != nil {
+			return nil, err
+		}
 
-	if r.DebugCallback != nil {
-		r.DebugCallback(line)
-	}
+		if r.DebugCallback != nil {
+			r.DebugCallback(line)
+		}
 
-	// Parse the message from our line
-	return ParseMessage(line)
+		// Parse the message from our line
+		msg, err = ParseMessage(line)
+	}
+	return msg, err
 }
