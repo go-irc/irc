@@ -90,6 +90,8 @@ func NewReader(r io.Reader) *Reader {
 // ReadMessage returns the next message from the stream or an error.
 // It ignores empty messages.
 func (r *Reader) ReadMessage() (msg *Message, err error) {
+	// It's valid for a message to be empty. Clients should ignore these,
+	// so we do to be good citizens.
 	err = ErrZeroLengthMessage
 	for err == ErrZeroLengthMessage {
 		var line string
