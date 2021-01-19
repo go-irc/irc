@@ -120,7 +120,7 @@ func TestConn(t *testing.T) {
 	rwc.server.WriteString(":invalid_message\r\n")
 	_, err := c.ReadMessage()
 	assert.Equal(t, ErrMissingDataAfterPrefix, err)
-	
+
 	// Ensure empty messages are ignored
 	m = MustParseMessage("001 test_nick")
 	rwc.server.WriteString("\r\n" + m.String() + "\r\n")
