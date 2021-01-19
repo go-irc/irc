@@ -120,6 +120,12 @@ func TestConn(t *testing.T) {
 	rwc.server.WriteString(":invalid_message\r\n")
 	_, err := c.ReadMessage()
 	assert.Equal(t, ErrMissingDataAfterPrefix, err)
+	
+	// Ensure empty messages are ignored
+	m = MustParseMessage("001 test_nick")
+	rwc.server.WriteString("\r\n" + m.String() + "\r\n")
+	m2 = testReadMessage(t, c)
+	assert.EqualValues(t, m, m2, "Message returned by client did not match input")
 
 	// This is an odd one... if there wasn't any output, it'll hit
 	// EOF, so we expect an error here so we can test an error
