@@ -40,13 +40,10 @@ var (
 	ErrMissingCommand = errors.New("irc: Missing message command")
 )
 
-// TagValue represents the value of a tag.
-type TagValue string
-
-// ParseTagValue parses a TagValue from the connection. If you need to
-// set a TagValue, you probably want to just set the string itself, so
-// it will be encoded properly.
-func ParseTagValue(v string) TagValue {
+// ParseTagValue parses an encoded tag value as a string. If you need to set a
+// tag, you probably want to just set the string itself, so it will be encoded
+// properly.
+func ParseTagValue(v string) string {
 	ret := &bytes.Buffer{}
 
 	input := bytes.NewBufferString(v)
@@ -76,11 +73,11 @@ func ParseTagValue(v string) TagValue {
 		}
 	}
 
-	return TagValue(ret.String())
+	return ret.String()
 }
 
-// Encode converts a TagValue to the format in the connection.
-func (v TagValue) Encode() string {
+// EncodeTagValue converts a raw string to the format in the connection.
+func EncodeTagValue(v string) string {
 	ret := &bytes.Buffer{}
 
 	for _, c := range v {
@@ -95,7 +92,7 @@ func (v TagValue) Encode() string {
 }
 
 // Tags represents the IRCv3 message tags.
-type Tags map[string]TagValue
+type Tags map[string]string
 
 // ParseTags takes a tag string and parses it into a tag map. It will
 // always return a tag map, even if there are no valid tags.
@@ -114,12 +111,6 @@ func ParseTags(line string) Tags {
 	}
 
 	return ret
-}
-
-// GetTag is a convenience method to look up a tag in the map.
-func (t Tags) GetTag(key string) (string, bool) {
-	ret, ok := t[key]
-	return string(ret), ok
 }
 
 // Copy will create a new copy of all IRC tags attached to this
@@ -143,7 +134,7 @@ func (t Tags) String() string {
 		buf.WriteString(k)
 		if v != "" {
 			buf.WriteByte('=')
-			buf.WriteString(v.Encode())
+			buf.WriteString(EncodeTagValue(v))
 		}
 	}
 

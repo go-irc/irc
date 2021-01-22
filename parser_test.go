@@ -177,7 +177,7 @@ func TestMsgSplit(t *testing.T) {
 		)
 
 		for k, v := range test.Atoms.Tags {
-			tag, ok := msg.GetTag(k)
+			tag, ok := msg.Tags[k]
 			assert.True(t, ok, "Missing tag")
 			if v == nil {
 				assert.EqualValues(t, "", tag, "%s: Tag %q differs: %s != \"\"", test.Desc, k, tag)
@@ -216,14 +216,14 @@ func TestMsgJoin(t *testing.T) {
 			Prefix:  ParsePrefix(test.Atoms.Source),
 			Command: test.Atoms.Verb,
 			Params:  test.Atoms.Params,
-			Tags:    make(map[string]TagValue),
+			Tags:    make(map[string]string),
 		}
 
 		for k, v := range test.Atoms.Tags {
 			if v == nil {
-				msg.Tags[k] = TagValue("")
+				msg.Tags[k] = ""
 			} else {
-				msg.Tags[k] = TagValue(v.(string))
+				msg.Tags[k] = v.(string)
 			}
 		}
 
