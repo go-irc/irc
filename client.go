@@ -30,6 +30,15 @@ type ClientConfig struct {
 
 	// Handler is used for message dispatching.
 	Handler Handler
+
+	//RecurringCalls is a slice of struct tuples containing functions to call on a recurring
+	//basis and how often to call them
+	RecurringCalls []RecurringCall
+}
+
+type RecurringCall struct {
+	Function func(c *Client)
+	TickRate time.Duration
 }
 
 type cap struct {
@@ -89,6 +98,27 @@ func (c *Client) writeCallback(w *Writer, line string) error {
 		c.sendError(err)
 	}
 	return err
+}
+
+func (c *Client) recurringCall(wg *sync.WaitGroup, exiting chan struct{}, callback func(c *Client), d time.Duration) {
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		ticker := time.NewTicker(d)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ticker.C:
+				//each time we get a tick, fire the callback and pass it the client
+				callback(c)
+			case <-exiting:
+				return
+			}
+		}
+	}()
 }
 
 // maybeStartLimiter will start a ticker which will limit how quickly messages
@@ -286,6 +316,10 @@ func (c *Client) RunContext(ctx context.Context) error {
 
 	c.maybeStartLimiter(&wg, exiting)
 	c.maybeStartPingLoop(&wg, exiting)
+
+	for _, rc := range c.config.RecurringCalls {
+		c.recurringCall(&wg, exiting, rc.Function, rc.TickRate)
+	}
 
 	c.currentNick = c.config.Nick
 
