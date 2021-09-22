@@ -146,7 +146,7 @@ type MsgSplitTests struct {
 func TestMsgSplit(t *testing.T) {
 	t.Parallel()
 
-	data, err := ioutil.ReadFile("./testcases/tests/msg-split.yaml")
+	data, err := ioutil.ReadFile("./_testcases/tests/msg-split.yaml")
 	require.NoError(t, err)
 
 	var splitTests MsgSplitTests
@@ -204,7 +204,7 @@ type MsgJoinTests struct {
 func TestMsgJoin(t *testing.T) {
 	t.Parallel()
 
-	data, err := ioutil.ReadFile("./testcases/tests/msg-join.yaml")
+	data, err := ioutil.ReadFile("./_testcases/tests/msg-join.yaml")
 	require.NoError(t, err)
 
 	var splitTests MsgJoinTests
@@ -246,7 +246,7 @@ type UserhostSplitTests struct {
 func TestUserhostSplit(t *testing.T) {
 	t.Parallel()
 
-	data, err := ioutil.ReadFile("./testcases/tests/userhost-split.yaml")
+	data, err := ioutil.ReadFile("./_testcases/tests/userhost-split.yaml")
 	require.NoError(t, err)
 
 	var userhostTests UserhostSplitTests

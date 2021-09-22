@@ -22,8 +22,8 @@ jobs:
         submodules: true
 
     - name: Clean up extra files
-      run: rm ./testcases/*.go
-      
+      run: rm ./_testcases/*.go
+
     - name: Download deps
       run: go mod download
 
