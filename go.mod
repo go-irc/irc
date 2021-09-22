@@ -1,4 +1,4 @@
-module gopkg.in/irc.v3
+module github.com/nathanvy/irc
 
 go 1.13
 
