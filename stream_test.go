@@ -149,7 +149,7 @@ func (rw *testReadWriter) Read(buf []byte) (int, error) {
 	// If there's data left in the buffer, we want to use that first.
 	if rw.serverBuffer.Len() > 0 {
 		s, err := rw.serverBuffer.Read(buf)
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			err = nil
 		}
 		rw.maybeBroadcastEmpty()
@@ -165,7 +165,7 @@ func (rw *testReadWriter) Read(buf []byte) (int, error) {
 	case data := <-rw.readChan:
 		rw.serverBuffer.WriteString(data)
 		s, err := rw.serverBuffer.Read(buf)
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			err = nil
 		}
 		rw.maybeBroadcastEmpty()
