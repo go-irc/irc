@@ -1,4 +1,4 @@
-module gopkg.in/irc.v3
+module gopkg.in/irc.v4
 
 go 1.13
 
