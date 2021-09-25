@@ -60,7 +60,7 @@ func (t *Tracker) GetChannel(name string) *ChannelState {
 }
 
 // Handle needs to be called for all 001, 332, 353, JOIN, TOPIC, PART, KICK,
-// QUIT, and NICK messages, but it is fine to call it with all. Note that this
+// QUIT, and NICK messages. All other messages will be ignored. Note that this
 // will not handle calling the underlying ISupportTracker's Handle method.
 func (t *Tracker) Handle(msg *Message) error {
 	switch msg.Command {

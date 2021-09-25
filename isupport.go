@@ -28,8 +28,8 @@ func NewISupportTracker() *ISupportTracker {
 	}
 }
 
-// Handle needs to be called for all 005 IRC messages, but it is fine to call it
-// with all.
+// Handle needs to be called for all 005 IRC messages. All other messages will
+// be ignored.
 func (t *ISupportTracker) Handle(msg *Message) error {
 	// Ensure only ISupport messages go through here
 	if msg.Command != "005" {
@@ -62,7 +62,8 @@ func (t *ISupportTracker) Handle(msg *Message) error {
 	return nil
 }
 
-// IsEnabled will check for boolean ISupport values.
+// IsEnabled will check for boolean ISupport values. Note that for ISupport
+// boolean true simply means the value exists.
 func (t *ISupportTracker) IsEnabled(key string) bool {
 	t.RLock()
 	defer t.RUnlock()

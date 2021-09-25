@@ -25,19 +25,19 @@ var tagEncodeMap = map[rune]string{
 var (
 	// ErrZeroLengthMessage is returned when parsing if the input is
 	// zero-length.
-	ErrZeroLengthMessage = errors.New("irc: Cannot parse zero-length message")
+	ErrZeroLengthMessage = errors.New("irc: cannot parse zero-length message")
 
 	// ErrMissingDataAfterPrefix is returned when parsing if there is
 	// no message data after the prefix.
-	ErrMissingDataAfterPrefix = errors.New("irc: No message data after prefix")
+	ErrMissingDataAfterPrefix = errors.New("irc: no message data after prefix")
 
 	// ErrMissingDataAfterTags is returned when parsing if there is no
 	// message data after the tags.
-	ErrMissingDataAfterTags = errors.New("irc: No message data after tags")
+	ErrMissingDataAfterTags = errors.New("irc: no message data after tags")
 
 	// ErrMissingCommand is returned when parsing if there is no
 	// command in the parsed message.
-	ErrMissingCommand = errors.New("irc: Missing message command")
+	ErrMissingCommand = errors.New("irc: missing message command")
 )
 
 // ParseTagValue parses an encoded tag value as a string. If you need to set a
