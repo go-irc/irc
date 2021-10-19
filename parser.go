@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"strings"
+	"sync"
 )
 
 var tagDecodeSlashMap = map[rune]rune{
@@ -39,6 +40,21 @@ var (
 	// command in the parsed message.
 	ErrMissingCommand = errors.New("irc: Missing message command")
 )
+
+// strings.Replacer that removes invalid bytes in messages before parsing.
+//
+// Refs:
+// https://datatracker.ietf.org/doc/html/rfc1459#section-2.3.1
+// https://datatracker.ietf.org/doc/html/rfc2812#section-2.3.1
+// https://modern.ircdocs.horse/#messages
+var (
+	cleanerOnce sync.Once
+	cleaner     *strings.Replacer
+)
+
+func cleanerInit() {
+	cleaner = strings.NewReplacer("\n", "", "\r", "", "\x00", "")
+}
 
 // TagValue represents the value of a tag.
 type TagValue string
@@ -250,7 +266,8 @@ func MustParseMessage(line string) *Message {
 // of invalid messages.
 func ParseMessage(line string) (*Message, error) {
 	// Trim the line and make sure we have data
-	line = strings.TrimRight(line, "\r\n")
+	cleanerOnce.Do(cleanerInit)
+	line = cleaner.Replace(line)
 	if len(line) == 0 {
 		return nil, ErrZeroLengthMessage
 	}

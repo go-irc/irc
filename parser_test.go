@@ -75,6 +75,11 @@ func TestMessageParam(t *testing.T) {
 	assert.Equal(t, m.Param(0), "test")
 	assert.Equal(t, m.Param(-1), "")
 	assert.Equal(t, m.Param(2), "")
+
+	m = MustParseMessage("PONG :t\x00e\rst")
+	assert.Equal(t, m.Param(0), "test")
+	assert.Equal(t, m.Param(-1), "")
+	assert.Equal(t, m.Param(2), "")
 }
 
 func TestMessageTrailing(t *testing.T) {
