@@ -28,6 +28,11 @@ var clientFilters = map[string]clientFilter{
 func handle001(c *Client, m *Message) {
 	c.currentNick = m.Params[0]
 	c.connected = true
+
+	// If the user provided a NickServ password, try to identify.
+	if c.config.NickServPass != "" {
+		_ = c.Writef("PRIVMSG %s :IDENTIFY %s", c.config.NickServNick, c.config.NickServPass)
+	}
 }
 
 // From rfc2812 section 5.2 (Error Replies)

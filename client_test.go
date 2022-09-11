@@ -170,7 +170,38 @@ func TestCapReq(t *testing.T) {
 func TestClient(t *testing.T) {
 	t.Parallel()
 
+	// Test NickServ settings
 	config := irc.ClientConfig{
+		Nick:         "test_nick",
+		NickServPass: "test_pass",
+		User:         "test_user",
+		Name:         "test_name",
+	}
+
+	runClientTest(t, config, io.EOF, nil, []TestAction{
+		ExpectLine("NICK :test_nick\r\n"),
+		ExpectLine("USER test_user 0 * :test_name\r\n"),
+		SendLine("001 :test_nick\r\n"),
+		ExpectLine("PRIVMSG NickServ :IDENTIFY test_pass\r\n"),
+	})
+
+	config = irc.ClientConfig{
+		Nick:         "test_nick",
+		NickServNick: "test_nickserv_user",
+		NickServPass: "test_pass",
+		User:         "test_user",
+		Name:         "test_name",
+	}
+
+	runClientTest(t, config, io.EOF, nil, []TestAction{
+		ExpectLine("NICK :test_nick\r\n"),
+		ExpectLine("USER test_user 0 * :test_name\r\n"),
+		SendLine("001 :test_nick\r\n"),
+		ExpectLine("PRIVMSG test_nickserv_user :IDENTIFY test_pass\r\n"),
+	})
+
+	// Test various client setups
+	config = irc.ClientConfig{
 		Nick: "test_nick",
 		Pass: "test_pass",
 		User: "test_user",
