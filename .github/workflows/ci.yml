@@ -1,20 +1,18 @@
 name: CI
 
-on: [push, pull_request]
-
-env:
-  GO11MODULE: on
+# Because "push" also shows up on PRs, we don't need to do both.
+on: [push]
 
 jobs:
-  build:
-    name: Build
+  build-1_13:
+    name: Build (Go 1.13)
     runs-on: ubuntu-latest
 
     steps:
     - name: Set up Go
       uses: actions/setup-go@v2
       with:
-        go-version: '^1.13'
+        go-version: '~1.13.5'
 
     - name: Check out code
       uses: actions/checkout@v2
@@ -27,21 +25,49 @@ jobs:
     - name: Download deps
       run: go mod download
 
-    - name: Run golangci-lint
-      uses: golangci/golangci-lint-action@v2
-      env:
-        GOROOT: ''
-      with:
-        version: 'v1.49.0'
-
     - name: Run tests
       run: go test -race -v ./...
+
+  build-latest:
+    name: Build (Latest)
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Set up Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: '~1.19'
+
+    - name: Check out code
+      uses: actions/checkout@v2
+      with:
+        submodules: true
+
+    - name: Clean up extra files
+      run: rm ./_testcases/*.go
+
+    - name: Download deps
+      run: go mod download
+
+    - name: Run tests
+      run: go test -covermode=atomic -coverprofile=profile.cov -race -v ./...
 
     - name: Submit coverage report
       env:
         COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        go test -covermode=count -coverprofile=profile.cov
         GO111MODULE=off go get github.com/mattn/goveralls
         $(go env GOPATH)/bin/goveralls -coverprofile=profile.cov -service=github
 
+  lint:
+    name: golangci-lint
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v2
+
+    - name: Run golangci-lint
+      uses: golangci/golangci-lint-action@v2
+      with:
+        version: 'v1.49.0'
