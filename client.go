@@ -7,6 +7,8 @@ import (
 	"io"
 	"sync"
 	"time"
+
+	"golang.org/x/time/rate"
 )
 
 // ClientConfig is a structure used to configure a Client.
@@ -66,7 +68,7 @@ type Client struct {
 
 	// Internal state
 	currentNick           string
-	limiter               chan struct{}
+	limiter               *rate.Limiter
 	incomingPongChan      chan string
 	errChan               chan error
 	caps                  map[string]cap
@@ -85,6 +87,14 @@ func NewClient(rwc io.ReadWriteCloser, config ClientConfig) *Client {
 		currentNick: config.Nick,
 	}
 
+	if config.SendLimit != 0 {
+		if config.SendBurst == 0 {
+			config.SendBurst = 1
+		}
+
+		c.limiter = rate.NewLimiter(rate.Every(config.SendLimit), config.SendBurst)
+	}
+
 	if config.EnableISupport || config.EnableTracker {
 		c.ISupport = NewISupportTracker()
 	}
@@ -101,7 +111,13 @@ func NewClient(rwc io.ReadWriteCloser, config ClientConfig) *Client {
 
 func (c *Client) writeCallback(w *Writer, line string) error {
 	if c.limiter != nil {
-		<-c.limiter
+		// Note that context.Background imitates the previous implementation,
+		// but it may be worth looking for a way to use this with a passed in
+		// context in the future.
+		err := c.limiter.Wait(context.Background())
+		if err != nil {
+			return err
+		}
 	}
 
 	_, err := w.RawWrite([]byte(line + "\r\n"))
@@ -109,41 +125,6 @@ func (c *Client) writeCallback(w *Writer, line string) error {
 		c.sendError(err)
 	}
 	return err
-}
-
-// maybeStartLimiter will start a ticker which will limit how quickly messages
-// can be written to the connection if the SendLimit is set in the config.
-func (c *Client) maybeStartLimiter(wg *sync.WaitGroup, exiting chan struct{}) {
-	if c.config.SendLimit == 0 {
-		return
-	}
-
-	wg.Add(1)
-
-	// If SendBurst is 0, this will be unbuffered, so keep that in mind.
-	c.limiter = make(chan struct{}, c.config.SendBurst)
-	limitTick := time.NewTicker(c.config.SendLimit)
-
-	go func() {
-		defer wg.Done()
-
-		var done bool
-		for !done {
-			select {
-			case <-limitTick.C:
-				select {
-				case c.limiter <- struct{}{}:
-				default:
-				}
-			case <-exiting:
-				done = true
-			}
-		}
-
-		limitTick.Stop()
-		close(c.limiter)
-		c.limiter = nil
-	}()
 }
 
 // maybeStartPingLoop will start a goroutine to send out PING messages at the
@@ -312,7 +293,6 @@ func (c *Client) RunContext(ctx context.Context) error {
 	exiting := make(chan struct{})
 	var wg sync.WaitGroup
 
-	c.maybeStartLimiter(&wg, exiting)
 	c.maybeStartPingLoop(&wg, exiting)
 
 	if c.config.Pass != "" {

@@ -19,9 +19,9 @@ This library is meant to stay as simple as possible so it can be a
 building block for other packages.
 
 This library aims for API compatibility whenever possible. New
-functions and other additions will most likely not result in a major
-version increase unless they break the API. This library aims to
-follow the semver recommendations mentioned on gopkg.in.
+functions and other additions will not result in a major version
+increase unless they break the API. This library aims to follow
+the semver recommendations mentioned on gopkg.in.
 
 Due to complications in how to support x/net/context vs the built-in context
 package, only go 1.7+ is officially supported.
@@ -42,7 +42,7 @@ just using this library, these are not needed.
 ## Notes on Unstable APIs
 
 Currently the ISupport and Tracker APIs are considered unstable - these may be
-broken with minor version changes, so use them at your own risk.
+broken or removed with minor version changes, so use them at your own risk.
 
 ## Major Version Changes
 

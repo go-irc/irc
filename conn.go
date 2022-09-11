@@ -2,6 +2,7 @@ package irc
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 )
@@ -102,11 +103,13 @@ func NewReader(r io.Reader) *Reader {
 
 // ReadMessage returns the next message from the stream or an error.
 // It ignores empty messages.
-func (r *Reader) ReadMessage() (msg *Message, err error) {
+func (r *Reader) ReadMessage() (*Message, error) {
+	var msg *Message
+
 	// It's valid for a message to be empty. Clients should ignore these,
 	// so we do to be good citizens.
-	err = ErrZeroLengthMessage
-	for err == ErrZeroLengthMessage {
+	err := ErrZeroLengthMessage
+	for errors.Is(err, ErrZeroLengthMessage) {
 		var line string
 		line, err = r.reader.ReadString('\n')
 		if err != nil {
