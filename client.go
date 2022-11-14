@@ -320,13 +320,27 @@ func (c *Client) RunContext(ctx context.Context) error {
 		return err
 	}
 
+	if c.config.Nick == "" {
+		return errors.New("ClientConfig.Nick must be specified")
+	}
+
+	user := c.config.User
+	if user == "" {
+		user = c.config.Nick
+	}
+
+	name := c.config.Name
+	if name == "" {
+		name = c.config.Nick
+	}
+
 	// This feels wrong because it results in CAP LS, CAP REQ, NICK, USER, CAP
 	// END, but it works and lets us keep the code a bit simpler.
 	err = c.Writef("NICK :%s", c.config.Nick)
 	if err != nil {
 		return err
 	}
-	err = c.Writef("USER %s 0 * :%s", c.config.User, c.config.Name)
+	err = c.Writef("USER %s 0 * :%s", user, name)
 	if err != nil {
 		return err
 	}
