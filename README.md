@@ -2,7 +2,7 @@
 
 [![GoDoc](https://img.shields.io/badge/doc-GoDoc-blue.svg)](https://pkg.go.dev/gopkg.in/irc.v4)
 [![Build Status](https://img.shields.io/github/workflow/status/go-irc/irc/CI.svg)](https://github.com/go-irc/irc/actions)
-[![Coverage Status](https://img.shields.io/coveralls/go-irc/irc.svg)](https://coveralls.io/github/go-irc/irc?branch=master)
+[![Coverage Status](https://img.shields.io/coveralls/github/go-irc/irc.svg)](https://coveralls.io/github/go-irc/irc?branch=master)
 
 This package was originally created to only handle message parsing, but has since been expanded to include small abstractions around connections and a very general client type with some small conveniences.
 
