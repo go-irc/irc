@@ -1,6 +1,6 @@
 # go-irc
 
-[![GoDoc](https://img.shields.io/badge/doc-GoDoc-blue.svg)](https://godoc.org/github.com/go-irc/irc)
+[![GoDoc](https://img.shields.io/badge/doc-GoDoc-blue.svg)](https://pkg.go.dev/gopkg.in/irc.v4)
 [![Build Status](https://img.shields.io/github/workflow/status/go-irc/irc/CI.svg)](https://github.com/go-irc/irc/actions)
 [![Coverage Status](https://img.shields.io/coveralls/go-irc/irc.svg)](https://coveralls.io/github/go-irc/irc?branch=master)
 
