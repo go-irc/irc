@@ -28,6 +28,8 @@ linters:
     - varcheck
 
 linters-settings:
+  cyclop:
+    max-complexity: 15
   govet:
     check-shadowing: true
   gci:
