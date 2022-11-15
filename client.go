@@ -354,6 +354,7 @@ func (c *Client) RunContext(ctx context.Context) error {
 	select {
 	case err = <-c.errChan:
 	case <-ctx.Done():
+		err = ctx.Err()
 	}
 
 	close(exiting)
