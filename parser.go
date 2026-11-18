@@ -238,7 +238,7 @@ func MustParseMessage(line string) *Message {
 // ParseMessage takes a message string (usually a whole line) and
 // parses it into a Message struct. This will return nil in the case
 // of invalid messages.
-func ParseMessage(line string) (*Message, error) { //nolint:funlen
+func ParseMessage(line string) (*Message, error) {
 	// Trim the line and make sure we have data
 	line = strings.TrimRight(line, "\r\n")
 	if len(line) == 0 {

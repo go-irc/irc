@@ -1,4 +1,3 @@
-//nolint:funlen
 package irc_test
 
 import (
