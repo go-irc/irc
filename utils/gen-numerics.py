@@ -2,10 +2,7 @@
 # dependencies = ["pyyaml"]
 # ///
 
-import io
-import subprocess
 import urllib.request
-from contextlib import redirect_stdout
 
 import yaml
 
@@ -27,9 +24,12 @@ print()
 print("package irc")
 print()
 print("const (")
+print("\t// Numerics are included if they're defined by RFC1459, RFC2812, or an")
+print("\t// IRCv3 spec, or are in common use across servers.")
+print()
 
 
-def print_item(idx, item, ircv3=False, obsolete=None, tablevel=1, **kwargs):
+def print_item(idx, item, ircv3=False, obsolete=None, **kwargs):
     if idx in used:
         return
 
@@ -52,7 +52,7 @@ def print_item(idx, item, ircv3=False, obsolete=None, tablevel=1, **kwargs):
     # Mark seen
     used.add(idx)
 
-    print("\t" * tablevel, end="")
+    print("\t", end="")
 
     print('{} = "{}"'.format(item["name"], item["numeric"]), end="")
 
@@ -88,18 +88,5 @@ print()
 # print()
 print("\t// Other")
 print_specific(name="RPL_ISUPPORT")
-print()
-print("\t// Ignored")
-print("\t//")
-print("\t// Anything not in an RFC has not been included because")
-print("\t// there are way too many conflicts to deal with.")
-print("\t/*")
-print_specific()
-print("\t//*/")
-print()
-print("\t// Obsolete")
-print("\t/*")
-print_specific(obsolete=True)
-print("\t//*/")
 
 print(")")
