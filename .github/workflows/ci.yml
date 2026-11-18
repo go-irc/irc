@@ -53,11 +53,10 @@ jobs:
       run: go test -covermode=atomic -coverprofile=profile.cov -race -v ./...
 
     - name: Submit coverage report
-      env:
-        COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        GO111MODULE=off go get github.com/mattn/goveralls
-        $(go env GOPATH)/bin/goveralls -coverprofile=profile.cov -service=github
+      uses: coverallsapp/github-action@v2
+      with:
+        file: profile.cov
+        format: golang
 
   lint:
     name: golangci-lint
